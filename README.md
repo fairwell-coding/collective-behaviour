@@ -1,5 +1,9 @@
 # Collective behaviour - group A
 
+## Public GIT repository 
+
+The public GIT repository can be found under: https://github.com/fairwell-coding/collective-behaviour
+
 ## Chosen paper
 
 The project is based on the article: Modeling of Crowd Evacuation With Assailants via a Fuzzy Logic Approach (Zhou, Dong, Wen, Yau and Sun, 2015)
