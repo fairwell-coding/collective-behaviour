@@ -13,10 +13,26 @@ class FuzzyDomains:
 
         self.__create_direction_domain()  # fig. 5a (vision of a pedestrian)
         self.__create_goal_angle_domain()  # similar defined to fig. 5a (not same angle range)
+        self.__create_distance_domain()  # fig. 5c
         self.__create_velocity_domain()  # fig. 5b
         self.__create_goal_distance_domain()  # fig. 5e
 
-        # TODO: Define and call all other needed domains here as private methods inside constructor
+    def __create_distance_domain(self):
+        self.distance = Domain("distance", 0, Environment.dmax, res=.1)
+
+        self.distance.near_rect = rectangular(0, 5/19 * Environment.dmax, c_m=1.0)
+        self.distance.near_lin = S(5/19 * Environment.dmax, 8/19 * Environment.dmax)
+        self.distance.near = self.distance.near_rect + self.distance.near_lin
+        if self.plot_membership_functions:
+            self.distance.near.plot()
+            plt.show()
+
+        self.distance.far_lin = R(5/19 * Environment.dmax, 8/19 * Environment.dmax)
+        self.distance.far_rect = rectangular(8/19 * Environment.dmax, Environment.dmax, c_m=1.0)
+        self.distance.far = self.distance.far_lin + self.distance.far_rect
+        if self.plot_membership_functions:
+            self.distance.far.plot()
+            plt.show()
 
     def __create_direction_domain(self):
         self.direction = Domain("direction", 0, Environment.fov, res=1.0)
@@ -124,3 +140,6 @@ class FuzzyDomains:
 
     def get_direction_domain(self) -> Domain:
         return self.direction
+
+    def get_distance_domain(self) -> Domain:
+        return self.distance
