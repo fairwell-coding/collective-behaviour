@@ -1,26 +1,30 @@
 from typing import List, Tuple
-from fuzzylogic.classes import Domain
+from fuzzylogic.classes import Domain, Rule
+
 from fuzzy_domains import FuzzyDomains
 
 
 class Simulation:
     def __init__(self, fuzzy_domains: FuzzyDomains, tick_rate=60) -> None:
         self.fuzzy_domains = fuzzy_domains
-        self.pedestrian = []
+        self.pedestrians = []
         self.obstacles = []
         self.tick_rate = tick_rate
 
     def get_domains(self):
         return self.fuzzy_domains
 
-    def add_pedestrian(self, pedestrian):
-        self.pedestrian.append(pedestrian)
+    def add_pedestrian(self, position: Tuple[float, float]):
+        self.pedestrians.append(Pedestrian((position[0], position[1]), self))
 
     def add_obstacle(self, obstacle):
         self.obstacles.append(obstacle)
 
-    def update(self):
-        pass
+    def run(self):
+        for pedestrian in self.pedestrians:
+            pedestrian.update()
+
+        # TODO: extend simulation
 
 
 class Obstacle:
@@ -48,15 +52,20 @@ class Pedestrian:
         goal_angle = self.simulation.get_domains().get_goal_angle_domain()
         goal_distance = self.simulation.get_domains().get_goal_distance_domain()
 
+        rules = Rule({(goal_angle.large_pos, goal_distance.near): ''  # rule no. 1
+                      })
+
         # TODO: define rules from table II
         # TODO: apply R4 formula from paper here
 
         pass
 
     def update(self):
-        pass
-        # TODO: call all four pedestrian category I rules
+        self.__goal_seeking_behavior()
+        # TODO: call rule 1 and 4 of pedestrian category I rules for first viable simulation
 
 
 if __name__ == '__main__':
     sim = Simulation(FuzzyDomains())
+    sim.add_pedestrian((1.31, 2.09))
+    sim.run()
