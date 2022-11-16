@@ -2,6 +2,8 @@ from typing import List, Tuple
 
 from fuzzylogic.classes import Domain
 
+from fuzzy_domains import FuzzyDomains
+
 
 class Simulation:
     def __init__(self, tick_rate=60) -> None:
@@ -50,3 +52,4 @@ class Pedestrian:
 
 if __name__ == '__main__':
     sim = Simulation()
+    domains = FuzzyDomains()
