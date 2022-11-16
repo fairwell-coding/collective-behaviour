@@ -14,11 +14,11 @@ class Simulation:
     def get_domains(self):
         return self.fuzzy_domains
 
-    def add_pedestrian(self, position: Tuple[float, float]):
-        self.pedestrians.append(Pedestrian((position[0], position[1]), self))
+    def add_pedestrian(self, position: Tuple[float, float], angle: float, velocity: float) -> None:
+        self.pedestrians.append(Pedestrian(self, position, angle, velocity))
 
-    def add_obstacle(self, obstacle):
-        self.obstacles.append(obstacle)
+    def add_obstacle(self, vertices: List[Tuple[float]]):
+        self.obstacles.append(Obstacle(vertices))
 
     def run(self):
         for pedestrian in self.pedestrians:
@@ -36,36 +36,52 @@ class Obstacle:
 
 
 class Pedestrian:
-    def __init__(self, position: Tuple[float, float], simulation: Simulation) -> None:
+    def __init__(self, simulation: Simulation, position: Tuple[float, float], angle=0.0, velocity=0.0) -> None:
         self.simulation = simulation
-        self.position: Tuple[float, float] = position
-        self.velocity: float = 0
-        self.angle: float = 0
+        self.position = position  # current position P_n
+        self.angle = angle  # direction X_in
+        self.velocity = velocity  # movement speed V_n
 
-    def __loc_obstacle_avoiding(self):  # Outputs speed and angle
+    def __local_obstacle_avoiding_behavior(self):
         pass
 
-    def __path_searching(self):
+    def __regional_path_searching_behavior(self):
         pass
 
-    def __goal_seeking_behavior(self, goal_angle: Domain, goal_distance: Domain):
+    def __goal_seeking_behavior(self, angle: float, distance: float) -> Tuple[float, float]:
+        """ Implements the third behavior of category I pedestrians, i.e. "The Goal-Seeking Behavior", of the paper.
+        :param angle: angle from goal
+        :param distance: distance to goal
+        :return: tuple of current direction/angle and velocity/movement speed based on the corresponding rules
+        """
+
         goal_angle = self.simulation.get_domains().get_goal_angle_domain()
         goal_distance = self.simulation.get_domains().get_goal_distance_domain()
 
-        rules = Rule({(goal_angle.large_pos, goal_distance.near): ''  # rule no. 1
+        # table II - the goal seeking behavior
+        rules = Rule({(goal_angle.large_pos, goal_distance.near): '',  # rule no. 1
+                      (goal_angle.large_pos, goal_distance.far): '',  # rule no. 2
+                      (goal_angle.small_pos, goal_distance.near): '',  # rule no. 3
+                      (goal_angle.small_pos, goal_distance.far): '',  # rule no. 4
+                      (goal_angle.zero, goal_distance.near): '',  # rule no. 5
+                      (goal_angle.zero, goal_distance.far): '',  # rule no. 6
+                      (goal_angle.small_neg, goal_distance.near): '',  # rule no. 7
+                      (goal_angle.small_neg, goal_distance.far): '',  # rule no. 8
+                      (goal_angle.large_neg, goal_distance.near): '',  # rule no. 9
+                      (goal_angle.large_neg, goal_distance.far): '',  # rule no. 10
                       })
 
-        # TODO: define rules from table II
-        # TODO: apply R4 formula from paper here
+        values = {goal_angle: angle, goal_distance: distance}
 
-        pass
+        return rules(values)
 
     def update(self):
-        self.__goal_seeking_behavior()
-        # TODO: call rule 1 and 4 of pedestrian category I rules for first viable simulation
+        # TODO: call rule 1 of pedestrian category I rules for first viable simulation
+        (angle_3, velocity_3) = self.__goal_seeking_behavior(self.angle, self.velocity)  # TODO: refactor behavior out of pedestrian class
+        # TODO: call rule 4 of pedestrian category I rules for first viable simulation
 
 
 if __name__ == '__main__':
     sim = Simulation(FuzzyDomains())
-    sim.add_pedestrian((1.31, 2.09))
+    sim.add_pedestrian((1.31, 2.09), 0.0, 0.0)
     sim.run()
