@@ -1,3 +1,4 @@
 python=3.9
 fuzzylogic==1.2
 matplotlib=3.5
+pygame=2.1.2
