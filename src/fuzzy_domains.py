@@ -1,16 +1,72 @@
 import matplotlib.pyplot as plt
 from fuzzylogic.classes import Domain
 from fuzzylogic.functions import trapezoid, rectangular, R, S
+from environment import Environment
 
 
 class FuzzyDomains:
+    """ Represents all domains and its corresponding fuzzy sets. Upon object instantiation all required membership functions are defined accordingly.
+    """
 
     def __init__(self, plot_membership_functions=False):
         self.plot_membership_functions = plot_membership_functions  # used for debugging
 
-        self.__create_goal_angle_domain()
-        self.__create_goal_distance_domain()
+        self.__create_direction_domain()  # fig. 5a (vision of a pedestrian)
+        self.__create_goal_angle_domain()  # similar defined to fig. 5a (not same angle range)
+        self.__create_velocity_domain()  # fig. 5b
+        self.__create_goal_distance_domain()  # fig. 5e
+
         # TODO: Define and call all other needed domains here as private methods inside constructor
+
+    def __create_direction_domain(self):
+        self.direction = Domain("direction", 0, Environment.fov, res=1.0)
+
+        self.direction.large_neg_rect = rectangular(0, 1/12 * Environment.fov, c_m=1.0)
+        self.direction.large_neg_linear = S(1/12 * Environment.fov, 1/6 * Environment.fov)
+        self.direction.large_neg = self.direction.large_neg_rect + self.direction.large_neg_linear
+        if self.plot_membership_functions:
+            self.direction.large_neg.plot()
+            plt.show()
+
+        self.direction.small_neg = trapezoid(1/12 * Environment.fov, 1/6 * Environment.fov, 1/3 * Environment.fov, 5/12 * Environment.fov, c_m=1.0)
+        self.direction.zero = trapezoid(1/3 * Environment.fov, 5/12 * Environment.fov, 7/12 * Environment.fov, 2/3 * Environment.fov, c_m=1.0)
+        self.direction.small_pos = trapezoid(7/12 * Environment.fov, 2/3 * Environment.fov, 5/6 * Environment.fov, 11/12 * Environment.fov, c_m=1.0)
+        if self.plot_membership_functions:
+            self.direction.small_neg.plot()
+            plt.show()
+            self.direction.zero.plot()
+            plt.show()
+            self.direction.small_pos.plot()
+            plt.show()
+
+        self.direction.large_pos_lin = R(5/6 * Environment.fov, 11/12 * Environment.fov)
+        self.direction.large_pos_rect = rectangular(11/12 * Environment.fov, Environment.fov, c_m=1.0)
+        self.direction.large_pos = self.direction.large_pos_lin + self.direction.large_pos_rect
+        if self.plot_membership_functions:
+            self.direction.large_pos.plot()
+            plt.show()
+
+    def __create_velocity_domain(self):
+        self.velocity = Domain("velocity", 0, Environment.vmax, res=.1)
+
+        self.velocity.stop_rect = rectangular(0, 1 / 6 * Environment.vmax)
+        self.velocity.stop_lin = S(1/6 * Environment.vmax, 1/4 * Environment.vmax)
+        self.velocity.stop = self.velocity.stop_rect + self.velocity.stop_lin
+        if self.plot_membership_functions:
+            self.velocity.stop.plot()
+            plt.show()
+
+        self.velocity.slow = trapezoid(1/6 * Environment.vmax, 1/4 * Environment.vmax, 3/4 * Environment.vmax, 5/6 * Environment.vmax)
+        if self.plot_membership_functions:
+            self.velocity.slow.plot()
+            plt.show()
+
+        self.velocity.fast_lin = R(3/4 * Environment.vmax, 5/6 * Environment.vmax)
+        self.velocity.fast_rect = rectangular(5/6 * Environment.vmax, Environment.vmax)
+        self.velocity.fast = self.velocity.fast_lin + self.velocity.fast_rect
+        if self.plot_membership_functions:
+            self.velocity.fast.plot()
+            plt.show()
 
     def __create_goal_distance_domain(self) -> None:
         self.goal_distance = Domain("goal distance", 0, 5, res=0.1)
@@ -62,3 +118,9 @@ class FuzzyDomains:
 
     def get_goal_distance_domain(self) -> Domain:
         return self.goal_distance
+
+    def get_velocity_domain(self) -> Domain:
+        return self.velocity
+
+    def get_direction_domain(self) -> Domain:
+        return self.direction

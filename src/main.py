@@ -17,7 +17,7 @@ class Simulation:
     def add_pedestrian(self, position: Tuple[float, float], angle: float, velocity: float) -> None:
         self.pedestrians.append(Pedestrian(self, position, angle, velocity))
 
-    def add_obstacle(self, vertices: List[Tuple[float]]):
+    def add_obstacle(self, vertices: List[Tuple[float, float]]) -> None:
         self.obstacles.append(Obstacle(vertices))
 
     def run(self):
@@ -38,6 +38,8 @@ class Obstacle:
 class Pedestrian:
     def __init__(self, simulation: Simulation, position: Tuple[float, float], angle=0.0, velocity=0.0) -> None:
         self.simulation = simulation
+        self.domains = self.simulation.get_domains()
+
         self.position = position  # current position P_n
         self.angle = angle  # direction X_in
         self.velocity = velocity  # movement speed V_n
@@ -55,20 +57,24 @@ class Pedestrian:
         :return: tuple of current direction/angle and velocity/movement speed based on the corresponding rules
         """
 
-        goal_angle = self.simulation.get_domains().get_goal_angle_domain()
-        goal_distance = self.simulation.get_domains().get_goal_distance_domain()
+        goal_angle = self.domains.goal_angle
+        goal_distance = self.domains.goal_distance
+        direction = self.domains.direction
+        velocity = self.domains.velocity
+
+        rule_1 = Rule({(goal_angle.large_pos, goal_distance.near): (direction.large_neg, velocity.stop)})
 
         # table II - the goal seeking behavior
-        rules = Rule({(goal_angle.large_pos, goal_distance.near): '',  # rule no. 1
-                      (goal_angle.large_pos, goal_distance.far): '',  # rule no. 2
-                      (goal_angle.small_pos, goal_distance.near): '',  # rule no. 3
-                      (goal_angle.small_pos, goal_distance.far): '',  # rule no. 4
-                      (goal_angle.zero, goal_distance.near): '',  # rule no. 5
-                      (goal_angle.zero, goal_distance.far): '',  # rule no. 6
-                      (goal_angle.small_neg, goal_distance.near): '',  # rule no. 7
-                      (goal_angle.small_neg, goal_distance.far): '',  # rule no. 8
-                      (goal_angle.large_neg, goal_distance.near): '',  # rule no. 9
-                      (goal_angle.large_neg, goal_distance.far): '',  # rule no. 10
+        rules = Rule({(goal_angle.large_pos, goal_distance.near): (direction.large_neg, velocity.stop),  # rule no. 1
+                      (goal_angle.large_pos, goal_distance.far): (direction.large_neg, velocity.slow),  # rule no. 2
+                      (goal_angle.small_pos, goal_distance.near): (direction.small_neg, velocity.slow),  # rule no. 3
+                      (goal_angle.small_pos, goal_distance.far): (direction.small_neg, velocity.slow),  # rule no. 4
+                      (goal_angle.zero, goal_distance.near): (direction.zero, velocity.fast),  # rule no. 5
+                      (goal_angle.zero, goal_distance.far): (direction.zero, velocity.fast),  # rule no. 6
+                      (goal_angle.small_neg, goal_distance.near): (direction.small_pos, velocity.slow),  # rule no. 7
+                      (goal_angle.small_neg, goal_distance.far): (direction.small_pos, velocity.slow),  # rule no. 8
+                      (goal_angle.large_neg, goal_distance.near): (direction.large_pos, velocity.stop),  # rule no. 9
+                      (goal_angle.large_neg, goal_distance.far): (direction.large_pos, velocity.slow),  # rule no. 10
                       })
 
         values = {goal_angle: angle, goal_distance: distance}
@@ -84,4 +90,5 @@ class Pedestrian:
 if __name__ == '__main__':
     sim = Simulation(FuzzyDomains())
     sim.add_pedestrian((1.31, 2.09), 0.0, 0.0)
+    sim.add_obstacle([(1.0, 4.0), (4.0, 4.0), (4.0, 6.0), (1.0, 6.0)])
     sim.run()
