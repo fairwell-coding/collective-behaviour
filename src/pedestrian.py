@@ -1,4 +1,4 @@
-from typing import Tuple
+from typing import Tuple, Dict
 from fuzzylogic.classes import Rule
 from simulation import Simulation
 import numpy as np
@@ -35,7 +35,7 @@ class Pedestrian:
 
         values = {dist: distance}
 
-        return rules(values)  # TODO: fix rule evaluation bug
+        return rules(values)
 
     def __regional_path_searching_behavior(self):
         pass
@@ -52,22 +52,33 @@ class Pedestrian:
         direction = self.domains.direction
         velocity = self.domains.velocity
 
-        # table II - the goal seeking behavior
-        rules = Rule({(goal_angle.large_pos, goal_distance.near): (direction.large_neg, velocity.stop),  # rule no. 1
-                      (goal_angle.large_pos, goal_distance.far): (direction.large_neg, velocity.slow),  # rule no. 2
-                      (goal_angle.small_pos, goal_distance.near): (direction.small_neg, velocity.slow),  # rule no. 3
-                      (goal_angle.small_pos, goal_distance.far): (direction.small_neg, velocity.slow),  # rule no. 4
-                      (goal_angle.zero, goal_distance.near): (direction.zero, velocity.fast),  # rule no. 5
-                      (goal_angle.zero, goal_distance.far): (direction.zero, velocity.fast),  # rule no. 6
-                      (goal_angle.small_neg, goal_distance.near): (direction.small_pos, velocity.slow),  # rule no. 7
-                      (goal_angle.small_neg, goal_distance.far): (direction.small_pos, velocity.slow),  # rule no. 8
-                      (goal_angle.large_neg, goal_distance.near): (direction.large_pos, velocity.stop),  # rule no. 9
-                      (goal_angle.large_neg, goal_distance.far): (direction.large_pos, velocity.slow),  # rule no. 10
-                      })
-
+        rules_direction = self.__create_goal_seeking_behavior_rules(True, direction, goal_angle, goal_distance, velocity)
+        rules_velocity = self.__create_goal_seeking_behavior_rules(False, direction, goal_angle, goal_distance, velocity)
         values = {goal_angle: angle, goal_distance: distance}
 
-        return rules(values)  # TODO: fix rule evaluation bug
+        return rules_direction(values), rules_velocity(values)
+
+    @staticmethod
+    def __create_goal_seeking_behavior_rules(is_direction: bool, direction, goal_angle, goal_distance, velocity):
+        """ table II - the goal seeking behavior
+        :param direction: orientation of pedestrian
+        :param goal_angle: angle towards goal
+        :param goal_distance: distance to goal
+        :param velocity: current pedestrian movement speed
+        :return: constructed rules
+        """
+
+        return Rule({(goal_angle.large_pos, goal_distance.near): direction.large_neg if is_direction else velocity.stop,  # rule no. 1
+                     (goal_angle.large_pos, goal_distance.far): direction.large_neg if is_direction else velocity.slow,  # rule no. 2
+                     (goal_angle.small_pos, goal_distance.near): direction.small_neg if is_direction else velocity.slow,  # rule no. 3
+                     (goal_angle.small_pos, goal_distance.far): direction.small_neg if is_direction else velocity.slow,  # rule no. 4
+                     (goal_angle.zero, goal_distance.near): direction.zero if is_direction else velocity.fast,  # rule no. 5
+                     (goal_angle.zero, goal_distance.far): direction.zero if is_direction else velocity.fast,  # rule no. 6
+                     (goal_angle.small_neg, goal_distance.near): direction.small_pos if is_direction else velocity.slow,  # rule no. 7
+                     (goal_angle.small_neg, goal_distance.far): direction.small_pos if is_direction else velocity.slow,  # rule no. 8
+                     (goal_angle.large_neg, goal_distance.near): direction.large_pos if is_direction else velocity.stop,  # rule no. 9
+                     (goal_angle.large_neg, goal_distance.far): direction.large_pos if is_direction else velocity.slow,  # rule no. 10
+                     })
 
     def __calculate_distance_from_goal(self):
         """ Calculates Euclidean distance between goal and pedestrian.
@@ -77,9 +88,10 @@ class Pedestrian:
         return np.linalg.norm(np.asarray(self.position) - np.asarray(self.goal.coordinates))
 
     def __calculate_angle_from_goal(self):
-        return 0.0  # TODO: calculate angle
+        return 45.0  # TODO: calculate angle
 
     def update(self):
-        (angle_1, velocity_1) = self.__local_obstacle_avoiding_behavior(3.76)  # TODO: replace hardcoded distance with the nearest object distance
+        # (angle_1, velocity_1) = self.__local_obstacle_avoiding_behavior(3.76)  # TODO: replace hardcoded distance with the nearest object distance
         (angle_3, velocity_3) = self.__goal_seeking_behavior(self.__calculate_angle_from_goal(), self.__calculate_distance_from_goal())
         # TODO: calculate weighted balance of above metrics
+        print('x')
