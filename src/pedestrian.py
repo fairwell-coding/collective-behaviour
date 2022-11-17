@@ -18,8 +18,24 @@ class Pedestrian:
         self.angle = angle  # direction X_in
         self.velocity = velocity  # movement speed V_n
 
-    def __local_obstacle_avoiding_behavior(self):
-        pass
+    def __local_obstacle_avoiding_behavior(self, distance: float) -> Tuple[float, float]:
+        """ Implements the first behavior of category I pedestrians, i.e. "The Local Obstacle-Avoiding Behavior", of the paper.
+        :param distance: distance from the nearest object within field of vision
+        :return: tuple of current direction/angle and velocity/movement speed based on the corresponding rules
+        """
+
+        dist = self.domains.distance
+        direction = self.domains.direction
+        velocity = self.domains.velocity
+
+        # table I - the local obstacle-avoiding behavior
+        rules = Rule({dist.near: (direction.large_neg, velocity.stop),  # rule no. 1
+                      # TODO: define near and far for all 5 viewing angles, then add all 2^5 = 32 rules
+                      })
+
+        values = {dist: distance}
+
+        return rules(values)  # TODO: fix rule evaluation bug
 
     def __regional_path_searching_behavior(self):
         pass
@@ -64,6 +80,6 @@ class Pedestrian:
         return 0.0  # TODO: calculate angle
 
     def update(self):
-        # TODO: call rule 1 of pedestrian category I rules for first viable simulation
+        (angle_1, velocity_1) = self.__local_obstacle_avoiding_behavior(3.76)  # TODO: replace hardcoded distance with the nearest object distance
         (angle_3, velocity_3) = self.__goal_seeking_behavior(self.__calculate_angle_from_goal(), self.__calculate_distance_from_goal())
-        # TODO: call rule 4 of pedestrian category I rules for first viable simulation
+        # TODO: calculate weighted balance of above metrics
