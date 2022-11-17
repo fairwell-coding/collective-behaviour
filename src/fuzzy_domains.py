@@ -85,17 +85,17 @@ class FuzzyDomains:
             plt.show()
 
     def __create_goal_distance_domain(self) -> None:
-        self.goal_distance = Domain("goal distance", 0, 5, res=0.1)
+        self.goal_distance = Domain("goal distance", 0, Environment.gmax, res=0.1)
 
-        self.goal_distance.near_rect = rectangular(0, 1, c_m=1.0)
-        self.goal_distance.near_lin = S(1, 2)
+        self.goal_distance.near_rect = rectangular(0, 5, c_m=1.0)
+        self.goal_distance.near_lin = S(5, 7.5)
         self.goal_distance.near = self.goal_distance.near_rect + self.goal_distance.near_lin
         if self.plot_membership_functions:
             self.goal_distance.near.plot()
             plt.show()
 
-        self.goal_distance.far_lin = R(1, 2)
-        self.goal_distance.far_rect = rectangular(2, 5, c_m=1.0)
+        self.goal_distance.far_lin = R(5, 7.5)
+        self.goal_distance.far_rect = rectangular(7.5, Environment.gmax, c_m=1.0)
         self.goal_distance.far = self.goal_distance.far_lin + self.goal_distance.far_rect
         if self.plot_membership_functions:
             self.goal_distance.far.plot()
