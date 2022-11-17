@@ -1,4 +1,4 @@
-from typing import Tuple, Dict
+from typing import Tuple, Dict, List
 from fuzzylogic.classes import Rule
 from simulation import Simulation
 import numpy as np
@@ -88,10 +88,36 @@ class Pedestrian:
         return np.linalg.norm(np.asarray(self.position) - np.asarray(self.goal.coordinates))
 
     def __calculate_angle_from_goal(self):
-        return 45.0  # TODO: calculate angle
+        """ Calculates angle between pedestrian and goal. Positive angles denote that the goal is on the right side of the pedestrian. Angles are calculated in degrees.
+        :return: angle(pedestrian, goal) in degrees
+        """
+
+        p = np.asarray(self.position)  # pedestrian
+        x = np.asarray([self.position[0] + 5, self.position[1]])  # x-axis
+        g = np.asarray(self.goal.coordinates)  # goal
+
+        px = x - p
+        pg = g - p
+
+        alpha = np.degrees(np.arccos(np.dot(px, pg) / (np.linalg.norm(px) * np.linalg.norm(pg))))  # angle between goal, pedestrian and x-axis (our angle origin)
+
+        return self.angle - alpha
 
     def update(self):
-        # (angle_1, velocity_1) = self.__local_obstacle_avoiding_behavior(3.76)  # TODO: replace hardcoded distance with the nearest object distance
+        (angle_1, velocity_1) = self.__local_obstacle_avoiding_behavior(3.76)  # TODO: replace hardcoded distance with the nearest object distance
         (angle_3, velocity_3) = self.__goal_seeking_behavior(self.__calculate_angle_from_goal(), self.__calculate_distance_from_goal())
-        # TODO: calculate weighted balance of above metrics
-        print('x')
+        movement_speed, turning_angle = self.__integrate_multiple_behaviors([angle_1, angle_3], [velocity_1, velocity_3])
+        print(f'Turning angle: {turning_angle}, movement speed: {movement_speed}')  # TODO: connect output values with visualization
+
+    @staticmethod
+    def __integrate_multiple_behaviors(angles: List[float], velocities: List[float]):
+        """ Integrate multiple behaviors to determine the degree of effect of each behavior on the final result
+        :param angles: angles calculated based on different fuzzy logic behaviors
+        :param velocities: velocities calculated based on different fuzzy logic behaviors
+        :return: weighted balance of turning angle and movement speed
+        """
+
+        turning_angle = np.mean(angles)
+        movement_speed = np.mean(velocities)
+
+        return movement_speed, turning_angle
