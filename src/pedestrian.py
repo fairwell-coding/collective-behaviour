@@ -7,8 +7,8 @@ import numpy as np
 class Pedestrian:
     def __init__(self, simulation: Simulation, position: Tuple[float, float], angle: float, velocity=0.0) -> None:
         if angle < 0.0 or angle > 359.0:
-            raise IOError("Valid direction angles for a pedestrian are within 0 and 359 degrees.")  # 360 would be equal to 0 and thus result in issues with the fuzzy logic rule application (
-            # turning left and right at the same time)
+            raise IOError("Valid direction angles for a pedestrian are within 0 and 359 degrees.")  # 360 would be equal to 0 and thus result in issues with the fuzzy logic rule application, i.e.
+            # turning left and right at the same time
 
         self.simulation = simulation
         self.domains = self.simulation.get_domains()
@@ -24,18 +24,20 @@ class Pedestrian:
         :return: tuple of current direction/angle and velocity/movement speed based on the corresponding rules
         """
 
-        dist = self.domains.distance
-        direction = self.domains.direction
-        velocity = self.domains.velocity
+        return 0.0, 3.4
 
-        # table I - the local obstacle-avoiding behavior
-        rules = Rule({dist.near: (direction.large_neg, velocity.stop),  # rule no. 1
-                      # TODO: define near and far for all 5 viewing angles, then add all 2^5 = 32 rules
-                      })
-
-        values = {dist: distance}
-
-        return rules(values)
+        # dist = self.domains.distance
+        # direction = self.domains.direction
+        # velocity = self.domains.velocity
+        #
+        # # table I - the local obstacle-avoiding behavior
+        # rules = Rule({dist.near: (direction.large_neg, velocity.stop),  # rule no. 1
+        #               # TODO: define near and far for all 5 viewing angles, then add all 2^5 = 32 rules
+        #               })
+        #
+        # values = {dist: distance}
+        #
+        # return rules(values)
 
     def __regional_path_searching_behavior(self):
         pass
@@ -49,7 +51,7 @@ class Pedestrian:
 
         goal_angle = self.domains.goal_angle
         goal_distance = self.domains.goal_distance
-        direction = self.domains.direction
+        direction = self.domains.fov
         velocity = self.domains.velocity
 
         rules_direction = self.__create_goal_seeking_behavior_rules(True, direction, goal_angle, goal_distance, velocity)
@@ -100,6 +102,7 @@ class Pedestrian:
         pg = g - p
 
         alpha = np.degrees(np.arccos(np.dot(px, pg) / (np.linalg.norm(px) * np.linalg.norm(pg))))  # angle between goal, pedestrian and x-axis (our angle origin)
+        # TODO: 3rd and 4th quadrant should add 180 degrees or return negative results in order to be conform to pedestrian orientation
 
         return self.angle - alpha
 

@@ -28,5 +28,3 @@ class Simulation:
     def run(self):
         for pedestrian in self.pedestrians:
             pedestrian.update()
-
-        # TODO: extend simulation
