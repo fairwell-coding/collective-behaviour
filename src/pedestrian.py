@@ -14,7 +14,7 @@ class Pedestrian:
         self.domains = self.simulation.get_domains()
         self.goal = self.simulation.get_goal()
 
-        self.position = position  # current position P_n
+        self.coordinates = position  # current position P_n
         self.angle = angle  # direction X_in
         self.velocity = velocity  # movement speed V_n
 
@@ -87,24 +87,43 @@ class Pedestrian:
         :return: Euclidean distance from goal
         """
 
-        return np.linalg.norm(np.asarray(self.position) - np.asarray(self.goal.coordinates))
+        return np.linalg.norm(np.asarray(self.coordinates) - np.asarray(self.goal.coordinates))
 
     def __calculate_angle_from_goal(self):
         """ Calculates angle between pedestrian and goal. Positive angles denote that the goal is on the right side of the pedestrian. Angles are calculated in degrees.
         :return: angle(pedestrian, goal) in degrees
         """
 
-        p = np.asarray(self.position)  # pedestrian
-        x = np.asarray([self.position[0] + 5, self.position[1]])  # x-axis
+        p = np.asarray(self.coordinates)  # pedestrian
+        x = np.asarray([self.coordinates[0] + 5, self.coordinates[1]])  # x-axis
         g = np.asarray(self.goal.coordinates)  # goal
 
         px = x - p
         pg = g - p
 
         alpha = np.degrees(np.arccos(np.dot(px, pg) / (np.linalg.norm(px) * np.linalg.norm(pg))))  # angle between goal, pedestrian and x-axis (our angle origin)
-        # TODO: 3rd and 4th quadrant should add 180 degrees or return negative results in order to be conform to pedestrian orientation
 
-        return self.angle - alpha
+        # Correct calculated goal angle for 3rd and 4th quadrant
+        if self.goal.coordinates[1] < self.coordinates[1]:
+            alpha = 360 - alpha
+
+        goal_angle = self.angle - alpha
+
+        # Pushforward measure for angle, i.e. alpha is element of (-180, 180)
+        if goal_angle < -180:
+            goal_angle += 360
+
+        if goal_angle > 180:
+            goal_angle -= 360
+
+        # Only allow final goal angles up to +/- 179 degrees to avoid goal seeker rules equalizing each other out when 180 degrees are reached
+        if goal_angle < -179:
+            goal_angle = -179
+
+        if goal_angle > 179:
+            goal_angle = 179
+
+        return goal_angle
 
     def update(self):
         (angle_1, velocity_1) = self.__local_obstacle_avoiding_behavior(3.76)  # TODO: replace hardcoded distance with the nearest object distance
