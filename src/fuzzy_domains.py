@@ -1,3 +1,5 @@
+from typing import Dict
+
 import matplotlib.pyplot as plt
 from fuzzylogic.classes import Domain
 from fuzzylogic.functions import trapezoid, rectangular, R, S
@@ -14,26 +16,43 @@ class FuzzyDomains:
 
         self.__create_fov_domain()  # fig. 5a (direction/vision/field of view of a pedestrian)
         self.__create_goal_angle_domain()  # similar defined to fig. 5a (not same angle range)
-        self.__create_distance_domain()  # fig. 5c
+        self.__create_distance_domains()  # fig. 5c
         self.__create_velocity_domain()  # fig. 5b
         self.__create_goal_distance_domain()  # fig. 5e
 
-    def __create_distance_domain(self):
-        self.distance = Domain("distance", 0, Environment.dmax, res=.1)
+    def __create_distance_domains(self):
+        """ Creates all five distance domains within the field of view of each pedestrian.
+        """
 
-        self.distance.near_rect = rectangular(0, 5 / 19 * Environment.dmax, c_m=1.0)
-        self.distance.near_lin = S(5 / 19 * Environment.dmax, 8 / 19 * Environment.dmax)
-        self.distance.near = self.distance.near_rect + self.distance.near_lin
+        self.distances = {'l': self.__create_distance_domain(),  # left
+                          'fl': self.__create_distance_domain(),  # front left
+                          'f': self.__create_distance_domain(),  # front
+                          'fr': self.__create_distance_domain(),  # front right
+                          'r': self.__create_distance_domain()  # right
+                          }
+
+    def __create_distance_domain(self) -> Domain:
+        """ Returns local domain object since this one needs to be copied
+        :return: prototype distance domain object
+        """
+
+        distance = Domain("distance", 0, Environment.dmax, res=.1)
+
+        distance.near_rect = rectangular(0, 5 / 19 * Environment.dmax, c_m=1.0)
+        distance.near_lin = S(5 / 19 * Environment.dmax, 8 / 19 * Environment.dmax)
+        distance.near = distance.near_rect + distance.near_lin
         if self.plot_membership_functions:
-            self.distance.near.plot()
+            distance.near.plot()
             plt.show()
 
-        self.distance.far_lin = R(5 / 19 * Environment.dmax, 8 / 19 * Environment.dmax)
-        self.distance.far_rect = rectangular(8 / 19 * Environment.dmax, Environment.dmax, c_m=1.0)
-        self.distance.far = self.distance.far_lin + self.distance.far_rect
+        distance.far_lin = R(5 / 19 * Environment.dmax, 8 / 19 * Environment.dmax)
+        distance.far_rect = rectangular(8 / 19 * Environment.dmax, Environment.dmax, c_m=1.0)
+        distance.far = distance.far_lin + distance.far_rect
         if self.plot_membership_functions:
-            self.distance.far.plot()
+            distance.far.plot()
             plt.show()
+
+        return distance
 
     def __create_fov_domain(self):
         self.fov = Domain("fov", -1 / 2 * Environment.fov, 1 / 2 * Environment.fov, res=1.0)
@@ -142,5 +161,5 @@ class FuzzyDomains:
     def get_direction_domain(self) -> Domain:
         return self.fov
 
-    def get_distance_domain(self) -> Domain:
-        return self.distance
+    def get_distance_domains(self) -> Dict[str, Domain]:
+        return self.distances

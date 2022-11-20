@@ -1,5 +1,7 @@
 from typing import Tuple, Dict, List
 from fuzzylogic.classes import Rule
+
+from environment import Environment
 from simulation import Simulation
 import numpy as np
 
@@ -18,31 +20,77 @@ class Pedestrian:
         self.angle = angle  # direction X_in
         self.velocity = velocity  # movement speed V_n
 
-    def __local_obstacle_avoiding_behavior(self, distance: float) -> Tuple[float, float]:
+    def __local_obstacle_avoiding_behavior(self, nearest_object_distances: Dict[str, float]) -> Tuple[float, float]:
         """ Implements the first behavior of category I pedestrians, i.e. "The Local Obstacle-Avoiding Behavior", of the paper.
-        :param distance: distance from the nearest object within field of vision
+        :param nearest_object_distances: dict of distances from the nearest object within field of vision, valid keys are 'l', 'fl', 'f', 'fr' and 'r' as described in the paper
         :return: tuple of current direction/angle and velocity/movement speed based on the corresponding rules
         """
 
-        return 0.0, 3.4
+        # return 0.0, 3.4
 
-        # dist = self.domains.distance
-        # direction = self.domains.direction
-        # velocity = self.domains.velocity
-        #
-        # # table I - the local obstacle-avoiding behavior
-        # rules = Rule({dist.near: (direction.large_neg, velocity.stop),  # rule no. 1
-        #               # TODO: define near and far for all 5 viewing angles, then add all 2^5 = 32 rules
-        #               })
-        #
-        # values = {dist: distance}
-        #
-        # return rules(values)
+        distances = self.domains.distances
+        direction = self.domains.fov
+        velocity = self.domains.velocity
+
+        rules_direction = self.__create_local_obstacle_avoiding_behavior_rules(True, direction, velocity, distances)
+        rules_velocity = self.__create_local_obstacle_avoiding_behavior_rules(False, direction, velocity, distances)
+
+        values = {distances['l']: nearest_object_distances['l'] if 'l' in nearest_object_distances else Environment.dmax,
+                  distances['fl']: nearest_object_distances['fl'] if 'fl' in nearest_object_distances else Environment.dmax,
+                  distances['f']: nearest_object_distances['f'] if 'f' in nearest_object_distances else Environment.dmax,
+                  distances['fr']: nearest_object_distances['fr'] if 'fr' in nearest_object_distances else Environment.dmax,
+                  distances['r']: nearest_object_distances['r'] if 'r' in nearest_object_distances else Environment.dmax}
+
+        return rules_direction(values), rules_velocity(values)
+
+    @staticmethod
+    def __create_local_obstacle_avoiding_behavior_rules(is_direction: bool, direction, velocity, distances):
+        """ table I - the local obstacle avoiding behavior, i.e. 2^5 = 32 rules in total for all viewing angles
+        :param is_direction: used to avoid duplicate code
+        :param direction: orientation of pedestrian
+        :param velocity: current pedestrian movement speed
+        :param distances: distances to the nearest objects within the five angled areas within the field of view of a pedestrian
+        :return: constructed rules
+        """
+
+        return Rule({(distances['l'].near, distances['fl'].near, distances['f'].near, distances['fr'].near, distances['r'].near): direction.zero if is_direction else velocity.stop,  # rule no. 1
+                     (distances['l'].near, distances['fl'].near, distances['f'].near, distances['fr'].near, distances['r'].far): direction.large_pos if is_direction else velocity.slow,  # rule no. 2
+                     (distances['l'].near, distances['fl'].near, distances['f'].near, distances['fr'].far, distances['r'].near): direction.small_pos if is_direction else velocity.slow,  # rule no. 3
+                     (distances['l'].near, distances['fl'].near, distances['f'].near, distances['fr'].far, distances['r'].far): direction.large_pos if is_direction else velocity.slow,  # rule no. 4
+                     (distances['l'].near, distances['fl'].near, distances['f'].far, distances['fr'].near, distances['r'].near): direction.zero if is_direction else velocity.fast,  # rule no. 5
+                     (distances['l'].near, distances['fl'].near, distances['f'].far, distances['fr'].near, distances['r'].far): direction.zero if is_direction else velocity.fast,  # rule no. 6
+                     (distances['l'].near, distances['fl'].near, distances['f'].far, distances['fr'].far, distances['r'].near): direction.zero if is_direction else velocity.fast,  # rule no. 7
+                     (distances['l'].near, distances['fl'].near, distances['f'].far, distances['fr'].far, distances['r'].far): direction.zero if is_direction else velocity.fast,  # rule no. 8
+                     (distances['l'].near, distances['fl'].far, distances['f'].near, distances['fr'].near, distances['r'].near): direction.small_neg if is_direction else velocity.slow,  # rule no. 9
+                     (distances['l'].near, distances['fl'].far, distances['f'].near, distances['fr'].near, distances['r'].far): direction.small_neg if is_direction else velocity.slow,  # rule no. 10
+                     (distances['l'].near, distances['fl'].far, distances['f'].near, distances['fr'].far, distances['r'].near): direction.small_neg if is_direction else velocity.slow,  # rule no. 11
+                     (distances['l'].near, distances['fl'].far, distances['f'].near, distances['fr'].far, distances['r'].far): direction.large_pos if is_direction else velocity.slow,  # rule no. 12
+                     (distances['l'].near, distances['fl'].far, distances['f'].far, distances['fr'].near, distances['r'].near): direction.zero if is_direction else velocity.fast,  # rule no. 13
+                     (distances['l'].near, distances['fl'].far, distances['f'].far, distances['fr'].near, distances['r'].far): direction.zero if is_direction else velocity.fast,  # rule no. 14
+                     (distances['l'].near, distances['fl'].far, distances['f'].far, distances['fr'].far, distances['r'].near): direction.zero if is_direction else velocity.fast,  # rule no. 15
+                     (distances['l'].near, distances['fl'].far, distances['f'].far, distances['fr'].far, distances['r'].far): direction.zero if is_direction else velocity.fast,  # rule no. 16
+                     (distances['l'].far, distances['fl'].near, distances['f'].near, distances['fr'].near, distances['r'].near): direction.large_neg if is_direction else velocity.slow,  # rule no. 17
+                     (distances['l'].far, distances['fl'].near, distances['f'].near, distances['fr'].near, distances['r'].far): direction.large_pos if is_direction else velocity.slow,  # rule no. 18
+                     (distances['l'].far, distances['fl'].near, distances['f'].near, distances['fr'].far, distances['r'].near): direction.small_pos if is_direction else velocity.slow,  # rule no. 19
+                     (distances['l'].far, distances['fl'].near, distances['f'].near, distances['fr'].far, distances['r'].far): direction.large_pos if is_direction else velocity.slow,  # rule no. 20
+                     (distances['l'].far, distances['fl'].near, distances['f'].far, distances['fr'].near, distances['r'].near): direction.zero if is_direction else velocity.fast,  # rule no. 21
+                     (distances['l'].far, distances['fl'].near, distances['f'].far, distances['fr'].near, distances['r'].far): direction.zero if is_direction else velocity.fast,  # rule no. 22
+                     (distances['l'].far, distances['fl'].near, distances['f'].far, distances['fr'].far, distances['r'].near): direction.zero if is_direction else velocity.fast,  # rule no. 23
+                     (distances['l'].far, distances['fl'].near, distances['f'].far, distances['fr'].far, distances['r'].far): direction.zero if is_direction else velocity.fast,  # rule no. 24
+                     (distances['l'].far, distances['fl'].far, distances['f'].near, distances['fr'].near, distances['r'].near): direction.large_neg if is_direction else velocity.slow,  # rule no. 25
+                     (distances['l'].far, distances['fl'].far, distances['f'].near, distances['fr'].near, distances['r'].far): direction.large_neg if is_direction else velocity.slow,  # rule no. 26
+                     (distances['l'].far, distances['fl'].far, distances['f'].near, distances['fr'].far, distances['r'].near): direction.large_neg if is_direction else velocity.slow,  # rule no. 27
+                     (distances['l'].far, distances['fl'].far, distances['f'].near, distances['fr'].far, distances['r'].far): direction.large_pos if is_direction else velocity.slow,  # rule no. 28
+                     (distances['l'].far, distances['fl'].far, distances['f'].far, distances['fr'].near, distances['r'].near): direction.zero if is_direction else velocity.fast,  # rule no. 29
+                     (distances['l'].far, distances['fl'].far, distances['f'].far, distances['fr'].near, distances['r'].far): direction.zero if is_direction else velocity.fast,  # rule no. 30
+                     (distances['l'].far, distances['fl'].far, distances['f'].far, distances['fr'].far, distances['r'].near): direction.zero if is_direction else velocity.fast,  # rule no. 31
+                     (distances['l'].far, distances['fl'].far, distances['f'].far, distances['fr'].far, distances['r'].far): direction.zero if is_direction else velocity.fast,  # rule no. 32
+                     })
 
     def __regional_path_searching_behavior(self):
         pass
 
-    def __goal_seeking_behavior(self, angle: float, distance: float) -> Tuple[float, float]:
+    def __global_goal_seeking_behavior(self, angle: float, distance: float) -> Tuple[float, float]:
         """ Implements the third behavior of category I pedestrians, i.e. "The Goal-Seeking Behavior", of the paper.
         :param angle: angle from goal
         :param distance: distance to goal
@@ -126,8 +174,8 @@ class Pedestrian:
         return goal_angle
 
     def update(self):
-        (angle_1, velocity_1) = self.__local_obstacle_avoiding_behavior(3.76)  # TODO: replace hardcoded distance with the nearest object distance
-        (angle_3, velocity_3) = self.__goal_seeking_behavior(self.__calculate_angle_from_goal(), self.__calculate_distance_from_goal())
+        (angle_1, velocity_1) = self.__local_obstacle_avoiding_behavior({'l': 3.41})  # TODO: replace hardcoded distance with the nearest object distance from object detection algorithm
+        (angle_3, velocity_3) = self.__global_goal_seeking_behavior(self.__calculate_angle_from_goal(), self.__calculate_distance_from_goal())
         movement_speed, turning_angle = self.__integrate_multiple_behaviors([angle_1, angle_3], [velocity_1, velocity_3])
         print(f'Turning angle: {turning_angle}, movement speed: {movement_speed}')  # TODO: connect output values with visualization
 
