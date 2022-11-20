@@ -26,8 +26,6 @@ class Pedestrian:
         :return: tuple of current direction/angle and velocity/movement speed based on the corresponding rules
         """
 
-        # return 0.0, 3.4
-
         distances = self.domains.distances
         direction = self.domains.fov
         velocity = self.domains.velocity
