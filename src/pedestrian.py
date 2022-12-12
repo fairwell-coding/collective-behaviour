@@ -189,3 +189,9 @@ class Pedestrian:
         movement_speed = np.mean(velocities)
 
         return movement_speed, turning_angle
+
+    def get_coordinates(self):
+        return self.coordinates
+
+    def get_angle(self):
+        return self.angle
