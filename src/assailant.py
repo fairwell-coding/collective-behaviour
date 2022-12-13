@@ -2,14 +2,13 @@ from typing import TYPE_CHECKING, Tuple, Dict, List
 from fuzzylogic.classes import Rule
 from algebra_functions import distance_between, angle_between, intersects, unit_vector_between
 from environment import Environment
-from simulation import Simulation
 import numpy as np
 
 if TYPE_CHECKING:
     from simulation import Simulation
 
 class Assailant:
-    def __init__(self, simulation: Simulation, position: Tuple[float, float], angle: float, velocity: 0.0):
+    def __init__(self, simulation: 'Simulation', position: Tuple[float, float], angle: float, velocity: 0.0):
         if angle < 0.0 or angle > 359.0:
             raise IOError(
                 "Valid direction angles for a pedestrian are within 0 and 359 degrees.")  # 360 would be equal to 0 and thus result in issues with the fuzzy logic rule application, i.e.
