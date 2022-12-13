@@ -4,3 +4,5 @@ class Environment:
     dmax = 5  # pedestrians may only see up to a radius of 5meters
     gmax = 100  # maximum possible goal distance
     g_angle_max = 360  # maximum range of goal angle
+    neg_energy_max = 1.0
+    k_w = 0.4
