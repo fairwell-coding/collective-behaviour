@@ -1,6 +1,6 @@
 from typing import Tuple, Dict, List
 from fuzzylogic.classes import Rule
-from algebra_functions import distance_between, intersects, unit_vector_between
+from algebra_functions import distance_between, angle_between, intersects, unit_vector_between
 from environment import Environment
 from simulation import Simulation
 import numpy as np
@@ -41,16 +41,15 @@ class Assailant:
         return filtered_targets
 
 
-    def target_selection_distance(self, key=min):  # -> Tuple[float, float]:  # returns the coordinates of the assailants's target based on distance from assailant.
+    def target_selection_distance(self, key=min)-> float:  # returns the angle to the target, selected based on distance.
         """ Selects a target using distance from assailant
         :param key: a function that accepts *n* float values and returns one of them
         :return: tuple of current direction/angle and velocity/movement speed based on the corresponding rules
         """
 
-        #TODO: change return value to angle.
-        return key((distance_between(pedestrian.get_coordinates(), self.coordinates), pedestrian.get_coordinates()) for pedestrian in self.__filter_targets__())
+        return angle_between(self, key((distance_between(pedestrian.get_coordinates(), self.coordinates), pedestrian) for pedestrian in self.__filter_targets__())[1])
 
-    def target_selection_peripherality(self, key=max): #-> Tuple[float, float]:
+    def target_selection_peripherality(self, key=max): # -> float:  # returns the angle to the target, selected based on distance.
         """ Selects a target using peripherality of group
         :param key: a function that accepts *n* float values and returns one of them
         :return: tuple of current direction/angle and velocity/movement speed based on the corresponding rules
@@ -61,9 +60,9 @@ class Assailant:
             vector_sum = [sum(element) for element in zip(*[unit_vector_between(pedestrian.get_coordinates(), self.coordinates) for p in targets if p.get_coordinates() != pedestrian.get_coordinates()])]
             vector_sum = [e/max((len(targets)-1), 1) for e in vector_sum]
             peripherality = np.sqrt(vector_sum[0]**2 + vector_sum[1]**2)
-            scores.append((peripherality, pedestrian.get_coordinates()))
+            scores.append((peripherality, pedestrian))
 
-        return key(scores)
+        return angle_between(self,key(scores, key=lambda x: x[0])[1])
 
     def update(self):
         pass

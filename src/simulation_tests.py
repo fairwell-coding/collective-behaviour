@@ -53,7 +53,7 @@ def __test_assailant_target_selection_2():
 
 
 if __name__ == '__main__':
-    __test_goal_angle()
+    #__test_goal_angle()
     # __test_goal_angle_2()
     #__test_assailant_target_selection()
-    #__test_assailant_target_selection_2()
+    __test_assailant_target_selection_2()
