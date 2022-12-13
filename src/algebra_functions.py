@@ -32,5 +32,36 @@ def  unit_vector_between(point_from: Tuple[float,float], point_to: Tuple[float,f
     vector_length = np.sqrt(directional_vector[0]**2 + directional_vector[1]**2)
     return directional_vector/vector_length
 
-def angle_between(params): #TODO: Move angle calculating function from pedestrians here
-    pass
+def angle_between(actor_from, actor_to):
+    """ Calculates angle between first and second actor. Positive angles denote that the goal is on the right side of the first actor. Angles are calculated in degrees.
+    :return: angle(pedestrian, goal) in degrees
+    """
+    p = np.asarray(actor_from.coordinates)  # first actor
+    x = np.asarray([actor_from.coordinates[0] + 5, actor_from.coordinates[1]])  # x-axis
+    g = np.asarray(actor_to.coordinates)  # second actor
+
+    px = x - p
+    pg = g - p
+
+    alpha = np.degrees(np.arccos(np.dot(px, pg) / (np.linalg.norm(px) * np.linalg.norm(pg))))  # angle between actor_to, actor_from and x-axis (our angle origin)
+
+    if actor_to.coordinates[1] < actor_from.coordinates[1]:
+        alpha = 360 - alpha
+
+    goal_angle = actor_from.angle - alpha
+
+    # Pushforward measure for angle, i.e. alpha is element of (-180, 180)
+    if goal_angle < -180:
+        goal_angle += 360
+
+    if goal_angle > 180:
+        goal_angle -= 360
+
+    # Only allow final goal angles up to +/- 179 degrees to avoid goal seeker rules equalizing each other out when 180 degrees are reached
+    if goal_angle < -179:
+        goal_angle = -179
+
+    if goal_angle > 179:
+        goal_angle = 179
+
+    return goal_angle

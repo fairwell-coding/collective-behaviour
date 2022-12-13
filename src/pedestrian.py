@@ -1,6 +1,6 @@
 from typing import Tuple, Dict, List
 from fuzzylogic.classes import Rule
-
+from algebra_functions import angle_between, distance_between
 from environment import Environment
 from simulation import Simulation
 import numpy as np
@@ -190,49 +190,6 @@ class Pedestrian:
                      (goal_angle.large_neg, goal_distance.far): direction.large_pos if is_direction else velocity.slow,  # rule no. 10
                      })
 
-    def __calculate_distance_from_goal(self):
-        """ Calculates Euclidean distance between goal and pedestrian.
-        :return: Euclidean distance from goal
-        """
-
-        return np.linalg.norm(np.asarray(self.coordinates) - np.asarray(self.goal.coordinates))
-
-    def __calculate_angle_from_goal(self):
-        """ Calculates angle between pedestrian and goal. Positive angles denote that the goal is on the right side of the pedestrian. Angles are calculated in degrees.
-        :return: angle(pedestrian, goal) in degrees
-        """
-
-        p = np.asarray(self.coordinates)  # pedestrian
-        x = np.asarray([self.coordinates[0] + 5, self.coordinates[1]])  # x-axis
-        g = np.asarray(self.goal.coordinates)  # goal
-
-        px = x - p
-        pg = g - p
-
-        alpha = np.degrees(np.arccos(np.dot(px, pg) / (np.linalg.norm(px) * np.linalg.norm(pg))))  # angle between goal, pedestrian and x-axis (our angle origin)
-
-        # Correct calculated goal angle for 3rd and 4th quadrant
-        if self.goal.coordinates[1] < self.coordinates[1]:
-            alpha = 360 - alpha
-
-        goal_angle = self.angle - alpha
-
-        # Pushforward measure for angle, i.e. alpha is element of (-180, 180)
-        if goal_angle < -180:
-            goal_angle += 360
-
-        if goal_angle > 180:
-            goal_angle -= 360
-
-        # Only allow final goal angles up to +/- 179 degrees to avoid goal seeker rules equalizing each other out when 180 degrees are reached
-        if goal_angle < -179:
-            goal_angle = -179
-
-        if goal_angle > 179:
-            goal_angle = 179
-
-        return goal_angle
-
     def __calculate_obsticle_impact(self, sector: str):
         """ Calculates obsticle impact sum for all objects in sector.
         :param sector: the chosen angles areas within the field of view of a pedestrian
@@ -281,7 +238,7 @@ class Pedestrian:
     def update(self):
         (angle_1, velocity_1) = self.__local_obstacle_avoiding_behavior({'l': 3.41})  # TODO: replace hardcoded distance with the nearest object distance from object detection algorithm
         (angle_2, velocity_2) = self.__regional_path_searching_behavior(self.__normalize_negative_energies({'l': 3.41, 'fl': 2.3, 'f': 3.1, 'fr': 5.0, 'r': 4.8})) # TODO: replace hardcoded data with the negative energies by sector data from negative energy algorithm
-        (angle_3, velocity_3) = self.__global_goal_seeking_behavior(self.__calculate_angle_from_goal(), self.__calculate_distance_from_goal())
+        (angle_3, velocity_3) = self.__global_goal_seeking_behavior(angle_between(self, self.goal), distance_between(self.coordinates, self.goal.coordinates))
         movement_speed, turning_angle = self.__integrate_multiple_behaviors([angle_1, angle_2, angle_3], [velocity_1, velocity_2, velocity_3])
         print(f'Turning angle: {turning_angle}, movement speed: {movement_speed}')  # TODO: connect output values with visualization
 

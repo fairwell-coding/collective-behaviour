@@ -63,8 +63,10 @@ class Assailant:
             peripherality = np.sqrt(vector_sum[0]**2 + vector_sum[1]**2)
             scores.append((peripherality, pedestrian.get_coordinates()))
 
-        return scores#key(scores)
+        return key(scores)
 
+    def update(self):
+        pass
 
     def __regional_path_searching_behavior(self):  # TODO: Assaliant still needs to avoid obstacles
         pass
