@@ -3,6 +3,7 @@ from fuzzy_domains import FuzzyDomains
 from goal import Goal
 from obstacle import Obstacle
 from pedestrian import Pedestrian
+from assailant import Assailant
 import pygame
 
 
@@ -11,6 +12,7 @@ class Simulation:
         self.fuzzy_domains = fuzzy_domains
         self.goal = goal
         self.pedestrians: List[Pedestrian] = []
+        self.assailants: List[Assailant] = []
         self.obstacles: List[Obstacle] = []
         
         self.tick_rate = tick_rate
@@ -26,8 +28,21 @@ class Simulation:
     def add_pedestrian(self, position: Tuple[float, float], angle: float, velocity: float) -> None:
         self.pedestrians.append(Pedestrian(self, position, angle, velocity))
 
+    def add_assailant(self, position: Tuple[float, float], angle: float, velocity: float) -> None:
+        from assailant import Assailant
+        self.assailants.append(Assailant(self, position, angle, velocity))
+
     def add_obstacle(self, vertices: List[Tuple[float, float]]) -> None:
         self.obstacles.append(Obstacle(vertices,self))
+
+    def get_pedestrians(self):
+        return self.pedestrians
+
+    def get_assailants(self):
+        return self.assailants
+
+    def get_obstacles(self):
+        return self.obstacles
 
     def run(self):
         running = True

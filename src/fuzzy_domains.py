@@ -18,6 +18,7 @@ class FuzzyDomains:
         self.__create_goal_angle_domain()  # similar defined to fig. 5a (not same angle range)
         self.__create_distance_domains()  # fig. 5c
         self.__create_velocity_domain()  # fig. 5b
+        self.__create_negative_energy_domains()  # fig. 5d        
         self.__create_goal_distance_domain()  # fig. 5e
 
     def __create_distance_domains(self):
@@ -149,6 +150,37 @@ class FuzzyDomains:
             self.goal_angle.large_pos.plot()
             plt.show()
 
+    def __create_negative_energy_domains(self):
+        """ Creates all five negative energy domains within the field of view of each pedestrian.
+        """
+
+        self.negative_energies = {'l': self.__create_negative_energy_domain(),  # left
+                                  'fl': self.__create_negative_energy_domain(),  # front left
+                                  'f': self.__create_negative_energy_domain(),  # front
+                                  'fr': self.__create_negative_energy_domain(),  # front right
+                                  'r': self.__create_negative_energy_domain()  # right
+                                }
+
+    def __create_negative_energy_domain(self) -> Domain:
+        negative_energy = Domain("negative energy", 0, Environment.neg_energy_max, res=0.1)
+        
+        negative_energy.low_rect = rectangular(0, 0.05, c_m=1.0)
+        negative_energy.low_lin = S(0.05, 0.075)
+        negative_energy.low = negative_energy.low_rect + negative_energy.low_lin
+        if self.plot_membership_functions:
+            negative_energy.low.plot()
+            plt.show()
+
+        negative_energy.high_lin = R(0.05, 0.075)
+        negative_energy.high_rect = rectangular(0.075, Environment.neg_energy_max, c_m=1.0)
+        negative_energy.high = negative_energy.high_lin + negative_energy.high_rect
+        if self.plot_membership_functions:
+            negative_energy.high.plot()
+            plt.show()
+
+        return negative_energy
+
+
     def get_goal_angle_domain(self) -> Domain:
         return self.goal_angle
 
@@ -163,3 +195,6 @@ class FuzzyDomains:
 
     def get_distance_domains(self) -> Dict[str, Domain]:
         return self.distances
+
+    def get_negative_energy_domain(self) -> Domain:
+        return self.negative_energies
