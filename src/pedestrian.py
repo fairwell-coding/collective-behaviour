@@ -1,13 +1,18 @@
-from typing import Tuple, Dict, List
+from typing import Tuple, Dict, List, TYPE_CHECKING
 from fuzzylogic.classes import Rule
 
 from environment import Environment
-from simulation import Simulation
+from obstacle import Obstacle
+from utils import Utils
 import numpy as np
+import pygame
 
+if TYPE_CHECKING:
+    from simulation import Simulation
 
-class Pedestrian:
-    def __init__(self, simulation: Simulation, position: Tuple[float, float], angle: float, velocity=0.0) -> None:
+class Pedestrian(pygame.sprite.Sprite):    
+    def __init__(self, simulation: 'Simulation', position: Tuple[float, float], angle: float, velocity=0.0) -> None:
+        super().__init__()
         if angle < 0.0 or angle > 359.0:
             raise IOError("Valid direction angles for a pedestrian are within 0 and 359 degrees.")  # 360 would be equal to 0 and thus result in issues with the fuzzy logic rule application, i.e.
             # turning left and right at the same time
@@ -16,9 +21,11 @@ class Pedestrian:
         self.domains = self.simulation.get_domains()
         self.goal = self.simulation.get_goal()
 
-        self.coordinates = position  # current position P_n
+        self.coordinates = np.array(position, dtype=float)  # current position P_n
         self.angle = angle  # direction X_in
         self.velocity = velocity  # movement speed V_n
+        
+        self.__update_position((0,0),0)
 
     def __local_obstacle_avoiding_behavior(self, nearest_object_distances: Dict[str, float]) -> Tuple[float, float]:
         """ Implements the first behavior of category I pedestrians, i.e. "The Local Obstacle-Avoiding Behavior", of the paper.
@@ -170,12 +177,73 @@ class Pedestrian:
             goal_angle = 179
 
         return goal_angle
+    
+    def __collision_detection(self, obstacle: 'Obstacle'):
+        for ov1, ov2 in zip(obstacle.get_vertices()[:-1], obstacle.get_vertices()[1:]):
+            for i, ray in enumerate(self.ray_coords):
+                intersection = Utils.find_intersection(ov1, ov2, self.coordinates, ray)
+                if np.all(intersection):
+                    self.ray_intersections[i].append(intersection)
+                    if i > 0:
+                        self.ray_intersections[i-1].append(intersection)
 
+            for i, ray1, ray2 in zip(range(5), self.ray_coords[:-1], self.ray_coords[1:]):
+                intersection = Utils.find_intersection(ov1, ov2, ray1, ray2)
+                if np.all(intersection):
+                    self.ray_intersections[i].append(intersection)
+                    
+                if Utils.is_inside_triangle(ov1,self.coordinates,ray1,ray2):
+                    self.ray_intersections[i].append(ov1)
+                if Utils.is_inside_triangle(ov2,self.coordinates,ray1,ray2):
+                    self.ray_intersections[i].append(ov2)
+
+    def __update_position(self, move, angle):
+        self.coordinates += move
+        self.angle += angle
+        self.angle_rad = np.radians(self.angle)
+        
+        self.ray_coords = np.array([(np.sin(angle + self.angle_rad), np.cos(angle + self.angle_rad)) for angle in Environment.fov_ray_angles_rad])
+        self.ray_coords = self.coordinates + Environment.dmax * self.ray_coords
+        
+        self.ray_intersections = [[]] * 6
+        for obstacle in self.simulation.obstacles:
+            self.__collision_detection(obstacle)
+
+    def update_from_keyboard(self, pressed_keys):
+        move = 50 / self.simulation.tick_rate * np.array([np.sin(self.angle_rad), np.cos(self.angle_rad)])
+        if pressed_keys[pygame.K_UP] or pressed_keys[pygame.K_w]:
+            self.__update_position(move, 0)
+        if pressed_keys[pygame.K_DOWN] or pressed_keys[pygame.K_s]:
+            self.__update_position(-move, 0)
+        if pressed_keys[pygame.K_LEFT] or pressed_keys[pygame.K_a]:
+            self.__update_position(0, 5)
+        if pressed_keys[pygame.K_RIGHT] or pressed_keys[pygame.K_d]:
+            self.__update_position(0, -5)
+    
     def update(self):
         (angle_1, velocity_1) = self.__local_obstacle_avoiding_behavior({'l': 3.41})  # TODO: replace hardcoded distance with the nearest object distance from object detection algorithm
         (angle_3, velocity_3) = self.__global_goal_seeking_behavior(self.__calculate_angle_from_goal(), self.__calculate_distance_from_goal())
         movement_speed, turning_angle = self.__integrate_multiple_behaviors([angle_1, angle_3], [velocity_1, velocity_3])
         print(f'Turning angle: {turning_angle}, movement speed: {movement_speed}')  # TODO: connect output values with visualization
+        
+        move = movement_speed / self.simulation.tick_rate
+        self.__update_position(move,turning_angle)
+
+    def draw(self):
+        coords_scaled = self.coordinates * self.simulation.scale
+        ray_coords_scaled = self.ray_coords * self.simulation.scale
+        
+        for ray in ray_coords_scaled:
+            pygame.draw.line(self.simulation.screen, Environment.color_black, coords_scaled, ray, 1)
+
+        for ray1, ray2 in zip(ray_coords_scaled[:-1], ray_coords_scaled[1:]):
+            pygame.draw.line(self.simulation.screen, Environment.color_black, ray1, ray2, 1)
+        
+        
+        for fov_segment_intersections in self.ray_intersections:
+            fov_segment_intersections_scaled = np.array(fov_segment_intersections) * self.simulation.scale
+            for ray_intersection in fov_segment_intersections_scaled:
+                pygame.draw.circle(self.simulation.screen, Environment.color_red, ray_intersection, 3)
 
     @staticmethod
     def __integrate_multiple_behaviors(angles: List[float], velocities: List[float]):
