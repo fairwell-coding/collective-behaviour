@@ -20,6 +20,9 @@ class FuzzyDomains:
         self.__create_velocity_domain()  # fig. 5b
         self.__create_negative_energy_domains()  # fig. 5d        
         self.__create_goal_distance_domain()  # fig. 5e
+        self.__create_occupied_angle_domain()  # {Small, Large} angle
+        self.__create_obstacle_impact_domain() # {Small, Middle, Large} impact
+        self.__create_collision_risk_domain() # {Low, High} risk
 
     def __create_distance_domains(self):
         """ Creates all five distance domains within the field of view of each pedestrian.
@@ -180,6 +183,61 @@ class FuzzyDomains:
 
         return negative_energy
 
+    def __create_occupied_angle_domain(self):
+        self.occupied_angle = Domain("occupied angle", 0, Environment.occupied_g_angle_max, res=0.1)
+
+        self.occupied_angle.small_rect = rectangular(0, 10, c_m=1.0)
+        self.occupied_angle.small_lin = S(10, 12.5)
+        self.occupied_angle.small = self.occupied_angle.small_rect + self.occupied_angle.small_lin
+        if self.plot_membership_functions:
+            self.occupied_angle.small.plot()
+            plt.show()
+
+        self.occupied_angle.large_lin = R(10, 12.5)
+        self.occupied_angle.large_rect = rectangular(12.5, Environment.occupied_g_angle_max, c_m=1.0)
+        self.occupied_angle.large = self.occupied_angle.large_lin + self.occupied_angle.large_rect
+        if self.plot_membership_functions:
+            self.occupied_angle.large.plot()
+            plt.show()
+
+    def __create_obstacle_impact_domain(self):
+        self.obstacle_impact = Domain("obstacle impact", 0, Environment.oi_max, res=.1)
+
+        self.obstacle_impact.small_rect = rectangular(0, 1 / 6 * Environment.oi_max)
+        self.obstacle_impact.small_lin = S(1 / 6 * Environment.oi_max, 1 / 4 * Environment.oi_max)
+        self.obstacle_impact.small = self.obstacle_impact.small_rect + self.obstacle_impact.small_lin
+        if self.plot_membership_functions:
+            self.obstacle_impact.small.plot()
+            plt.show()
+
+        self.obstacle_impact.middle = trapezoid(1 / 6 * Environment.oi_max, 1 / 4 * Environment.oi_max, 3 / 4 * Environment.oi_max, 5 / 6 * Environment.oi_max)
+        if self.plot_membership_functions:
+            self.obstacle_impact.middle.plot()
+            plt.show()
+
+        self.obstacle_impact.large_lin = R(3 / 4 * Environment.oi_max, 5 / 6 * Environment.oi_max)
+        self.obstacle_impact.large_rect = rectangular(5 / 6 * Environment.oi_max, Environment.oi_max)
+        self.obstacle_impact.large = self.obstacle_impact.large_lin + self.obstacle_impact.large_rect
+        if self.plot_membership_functions:
+            self.obstacle_impact.large.plot()
+            plt.show()
+
+    def __create_collision_risk_domain(self):
+        self.collision_risk = Domain("collision risk", 0, Environment.cr_max, res=0.1)
+
+        self.collision_risk.low_rect = rectangular(0, 0.4, c_m=1.0)
+        self.collision_risk.low_lin = S(0.4, 0.6)
+        self.collision_risk.low = self.collision_risk.low_rect + self.collision_risk.low_lin
+        if self.plot_membership_functions:
+            self.collision_risk.low.plot()
+            plt.show()
+
+        self.collision_risk.high_lin = R(0.4, 0.6)
+        self.collision_risk.high_rect = rectangular(0.6, Environment.cr_max, c_m=1.0)
+        self.collision_risk.high = self.collision_risk.high_lin + self.collision_risk.high_rect
+        if self.plot_membership_functions:
+            self.collision_risk.high.plot()
+            plt.show()
 
     def get_goal_angle_domain(self) -> Domain:
         return self.goal_angle
@@ -196,5 +254,14 @@ class FuzzyDomains:
     def get_distance_domains(self) -> Dict[str, Domain]:
         return self.distances
 
-    def get_negative_energy_domain(self) -> Domain:
+    def get_negative_energy_domain(self):
         return self.negative_energies
+    
+    def get_occupied_angle_domain(self):
+        return self.occupied_angle
+    
+    def get_obstacle_impact_domain(self):
+        return self.obstacle_impact
+
+    def get_collision_risk_domain(self):
+        return self.collision_risk

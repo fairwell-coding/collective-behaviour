@@ -8,8 +8,11 @@ class Environment:
     dmax = 5  # pedestrians may only see up to a radius of 5meters
     gmax = 100  # maximum possible goal distance
     g_angle_max = 360  # maximum range of goal angle
-    neg_energy_max = 1.0
-    k_w = 0.4
+    neg_energy_max = 1.0 # maximum negative energy
+    k_w = 0.4 # weighting factor for calculating negative energy
+    occupied_g_angle_max = 40  # maximum range of occupied goal angle
+    oi_max = 1.0  # maximum range of obstacle impact
+    cr_max = 1.0  # maximum range of collision risk
     fov_ray_angles = [0,40,30,30,30,40]
     
     fov_ray_angles_rad = np.add.accumulate(np.radians(fov_ray_angles))

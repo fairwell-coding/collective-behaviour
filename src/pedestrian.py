@@ -197,50 +197,125 @@ class Pedestrian(pygame.sprite.Sprite):
                      (goal_angle.large_neg, goal_distance.far): direction.large_pos if is_direction else velocity.slow,  # rule no. 10
                      })
 
-    def __calculate_obsticle_impact(self, sector: str):
-        """ Calculates obsticle impact sum for all objects in sector.
-        :param sector: the chosen angles areas within the field of view of a pedestrian
-        :return: obsticle impact for one of the five angled areas within the field of view of a pedestrian
+    def __calculate_obstacle_impact(self, obstacles):
+        """ Calculates obstacle impact sum for all objects in one sector. A part of negative energy calculation. 
+        :param obstacles: a list of obstacles represented by tuples (occupied_angle, distance) of obstacle
+        :return: obstacle impact for one sector within the field of view of a pedestrian
         """
 
-        #TODO: calculate OI for sector *
-        pass
+        occupied_angle = self.domains.occupied_angle
+        distance = self.domains.goal_distance
+        oi = self.domains.obstacle_impact
+        
+        rules_oi = self.__create_obstacle_impact_rules(oi, occupied_angle, distance)
 
-    def __calculate_collision_risk(self, sector: str):
+        obstacleImpact = 0
+        for (a, d) in obstacles:
+            values = {occupied_angle: a, distance: d}
+            obstacleImpact += rules_oi(values)
+
+        return obstacleImpact
+
+    @staticmethod
+    def __create_obstacle_impact_rules(oi, occupied_angle, distance):
+        """ Obstacle impact rules: an obstacle which has nearer distance and larger occupied angle brings larger OI.
+        :param oi: obstacle impact
+        :param occupied_angle: angle that the obstacle occupies in the field of vision
+        :param distance: distance to obstacle
+        :return: constructed rules
+        """
+
+        return Rule({(occupied_angle.large, distance.near): oi.large,
+                     (occupied_angle.large, distance.far): oi.middle,
+                     (occupied_angle.small, distance.near): oi.middle,
+                     (occupied_angle.small, distance.far): oi.small,
+                     })
+
+    def __calculate_collision_risk(self, pedestrians):
         """ Calculates collision risk sum for all pedestrians in sector.
-        :param sector: the chosen angles areas within the field of view of a pedestrian
-        :return: obsticle impact for one of the five angled areas within the field of view of a pedestrian
+        :param pedestrians: a list of pedestrians represented by tuples (distance, velocity, angle)
+        :return: collision risk for one of the five angled areas within the field of view of a pedestrian
         """
 
-        #TODO: calculate CR for sector *
-        pass
+        distance = self.domains.goal_distance
+        velocity = self.domains.velocity
+        angle = self.domains.goal_angle
+        cr = self.domains.collision_risk
 
-    def __calculate_negative_energies(self) -> Dict[str, float]:
+        rules_cr = self.__create_collision_risk_rules(cr, distance, velocity, angle)
+
+        collisionRisk = 0
+        for (d, v, a) in pedestrians:
+            values = {distance: d, velocity: v, angle: a}
+            collisionRisk += rules_cr(values)
+
+        return collisionRisk
+
+    @staticmethod
+    def __create_collision_risk_rules(cr, distance, velocity, angle):
+        """ Collision risk rules: lower CR if a opposite pedestrian deviated from the decision maker, had a far relative distance or moved with a low speed. 
+        :param cr: collision risk
+        :param distance: distance to pedestrian
+        :param velocity: pedestrian movement speed
+        :param angle: angle between pedestrian and decision maker
+        
+        :return: constructed rules
+        """
+
+        return Rule({(distance.near, velocity.stop, angle.large_neg): cr.low,
+                     (distance.near, velocity.stop, angle.small_neg): cr.low,
+                     (distance.near, velocity.stop, angle.zero): cr.low,
+                     (distance.near, velocity.stop, angle.small_pos): cr.low,
+                     (distance.near, velocity.stop, angle.large_pos): cr.low,
+                     (distance.near, velocity.slow, angle.large_neg): cr.low,
+                     (distance.near, velocity.slow, angle.small_neg): cr.high,
+                     (distance.near, velocity.slow, angle.zero): cr.high,
+                     (distance.near, velocity.slow, angle.small_pos): cr.high,
+                     (distance.near, velocity.slow, angle.large_pos): cr.low,
+                     (distance.near, velocity.fast, angle.large_neg): cr.low,
+                     (distance.near, velocity.fast, angle.small_neg): cr.high,
+                     (distance.near, velocity.fast, angle.zero): cr.high,
+                     (distance.near, velocity.fast, angle.small_pos): cr.high,
+                     (distance.near, velocity.fast, angle.large_pos): cr.low,
+                     (distance.far, velocity.stop, angle.large_neg): cr.low,
+                     (distance.far, velocity.stop, angle.small_neg): cr.low,
+                     (distance.far, velocity.stop, angle.zero): cr.low,
+                     (distance.far, velocity.stop, angle.small_pos): cr.low,
+                     (distance.far, velocity.stop, angle.large_pos): cr.low,
+                     (distance.far, velocity.slow, angle.large_neg): cr.low,
+                     (distance.far, velocity.slow, angle.small_neg): cr.low,
+                     (distance.far, velocity.slow, angle.zero): cr.low,
+                     (distance.far, velocity.slow, angle.small_pos): cr.low,
+                     (distance.far, velocity.slow, angle.large_pos): cr.low,
+                     (distance.far, velocity.fast, angle.large_neg): cr.low,
+                     (distance.far, velocity.fast, angle.small_neg): cr.high,
+                     (distance.far, velocity.fast, angle.zero): cr.high,
+                     (distance.far, velocity.fast, angle.small_pos): cr.high,
+                     (distance.far, velocity.fast, angle.large_pos): cr.low,
+                     })
+
+    def __calculate_negative_energies(self, obstacles, pedestrians) -> Dict[str, float]:
         """ Calculates negative energies for all sectors.
-        :return: negative energies within the five angled areas within the field of view of a pedestrian
-        """
-
-        negativeEnergyPerSector = [0.0, 0.0, 0.0, 0.0, 0.0]
-        sectors = ['l', 'fl', 'f', 'fr', 'r']
-
-        for i in range(len(sectors)):
-            obstacleImpactPerSector = self.__calculate_obsticle_impact(sectors[i])
-            collisionRiskPerSector = self.__calculate_collision_risk(sectors[i])
-            negativeEnergyPerSector[i] = Environment.k_w * obstacleImpactPerSector + (1 - Environment.k_w) * collisionRiskPerSector
-
-        return negativeEnergyPerSector
-    
-    def __normalize_negative_energies(self, negative_energy_per_sector: Dict[str, float]) -> Dict[str, float]:
-        """ Calculates normalized negative energy for all sectors. 
-        :param negative_energy_per_sector: negative energies within the five angled areas within the field of view of a pedestrian 
+        :param obstacles: a dictionary of obstacles represented by a list of tuples (occupied_angle, distance) for each field of vision
+        :params pedestrians: a dictionary of pedestrians represented by a list of tuples (distance, velocity, angle) for each field of vision
         :return: normalized negative energies within the five angled areas within the field of view of a pedestrian
         """
-        minimum = min(negative_energy_per_sector.values())
-        maximum = max(negative_energy_per_sector.values())
-        for i in negative_energy_per_sector.keys():
-            negative_energy_per_sector[i] = (maximum - negative_energy_per_sector[i]) / (maximum - minimum)
-        
-        return negative_energy_per_sector
+
+        negativeEnergyPerSector = {'l': 0.0, 'fl': 0.0, 'f': 0.0, 'fr': 0.0, 'r': 0.0}
+        sectors = ['l', 'fl', 'f', 'fr', 'r']
+
+        for s in sectors:
+            obstacleImpactPerSector = self.__calculate_obstacle_impact(obstacles[s])
+            collisionRiskPerSector = self.__calculate_collision_risk(pedestrians[s])
+            negativeEnergyPerSector[s] = Environment.k_w * obstacleImpactPerSector + (1 - Environment.k_w) * collisionRiskPerSector
+
+        #Normalize negative energies
+        minimum = min(negativeEnergyPerSector.values())
+        maximum = max(negativeEnergyPerSector.values())
+        for i in negativeEnergyPerSector.keys():
+            negativeEnergyPerSector[i] = (maximum - negativeEnergyPerSector[i]) / (maximum - minimum)
+
+        return negativeEnergyPerSector
     
     def __collision_detection(self, obstacle: 'Obstacle'):
         for ov1, ov2 in zip(obstacle.get_vertices()[:-1], obstacle.get_vertices()[1:]):
@@ -286,7 +361,7 @@ class Pedestrian(pygame.sprite.Sprite):
     
     def update(self):
         (angle_1, velocity_1) = self.__local_obstacle_avoiding_behavior({'l': 3.41})  # TODO: replace hardcoded distance with the nearest object distance from object detection algorithm
-        (angle_2, velocity_2) = self.__regional_path_searching_behavior(self.__normalize_negative_energies({'l': 3.41, 'fl': 2.3, 'f': 3.1, 'fr': 5.0, 'r': 4.8})) # TODO: replace hardcoded data with the negative energies by sector data from negative energy algorithm
+        (angle_2, velocity_2) = self.__regional_path_searching_behavior(self.__calculate_negative_energies({'l': [[15, 3.41]], 'fl': [[1, 2.3], [1, 3.3]], 'f': [[5, 3.1]], 'fr': [[4, 5.0]], 'r': [[2, 4.8]]}, {'l': [[3.41, 1, 1]], 'fl': [[2.3, 1, 1]], 'f': [[3.1, 1, 1]], 'fr': [[5.0, 1, 1]], 'r': [[4.8, 1, 1]]})) # TODO: replace hardcoded data for obstacles and pedestrians in field of vision from object and pedestrian detection algorithms
         (angle_3, velocity_3) = self.__global_goal_seeking_behavior(angle_between(self, self.goal), distance_between(self.coordinates, self.goal.coordinates))
         movement_speed, turning_angle = self.__integrate_multiple_behaviors([angle_1, angle_2, angle_3], [velocity_1, velocity_2, velocity_3])
         print(f'Turning angle: {turning_angle}, movement speed: {movement_speed}')  # TODO: connect output values with visualization
