@@ -29,11 +29,10 @@ class Simulation:
         self.pedestrians.append(Pedestrian(self, position, angle, velocity))
 
     def add_assailant(self, position: Tuple[float, float], angle: float, velocity: float) -> None:
-        from assailant import Assailant
         self.assailants.append(Assailant(self, position, angle, velocity))
 
     def add_obstacle(self, vertices: List[Tuple[float, float]]) -> None:
-        self.obstacles.append(Obstacle(vertices,self))
+        self.obstacles.append(Obstacle(vertices, self))
 
     def get_pedestrians(self):
         return self.pedestrians
@@ -58,6 +57,9 @@ class Simulation:
 
             for pedestrian in self.pedestrians:
                 pedestrian.update()
+
+            for assailant in self.assailants:
+                assailant.update()
             
             self.screen.fill((255,255,255))
             #manual_pedestrian.update_from_keyboard(pygame.key.get_pressed())
@@ -67,6 +69,9 @@ class Simulation:
                 
             for pedestrian in self.pedestrians:
                 pedestrian.draw()
+
+            for assailant in self.assailants:
+                assailant.draw()
                 
             self.goal.draw(self.screen, self.scale)
             

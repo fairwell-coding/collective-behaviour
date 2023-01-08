@@ -3,7 +3,7 @@ import pygame
 
 class Environment:
     reach_max = 0.75 # maximum reach of assailants
-    vmax = 3.58  # avg running speed of male = 3.58m/s
+    vmax = 13.58  # avg running speed of male = 3.58m/s #EDIT: Changed to 33.58 for testing purpuses
     fov = 170  # field of view of a pedestrian measured in degrees
     dmax = 5  # pedestrians may only see up to a radius of 5meters
     gmax = 100  # maximum possible goal distance
@@ -19,5 +19,6 @@ class Environment:
     fov_ray_angles_rad -= fov_ray_angles_rad[-1] / 2
     
     color_black = pygame.Color('#000000')
+    color_green = pygame.Color('#00FF00')
     color_red = pygame.Color('#FF0000')
     

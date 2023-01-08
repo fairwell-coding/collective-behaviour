@@ -325,12 +325,12 @@ class Pedestrian(pygame.sprite.Sprite):
                     self.ray_intersections[i].append(intersection)
                     if i > 0:
                         self.ray_intersections[i-1].append(intersection)
-                        
+
             for i, ray1, ray2 in zip(range(5), self.ray_coords[:-1], self.ray_coords[1:]):
                 intersection = Utils.find_intersection(ov1, ov2, ray1, ray2)
                 if np.all(intersection):
                     self.ray_intersections[i].append(intersection)
-                    
+
                 if Utils.is_inside_triangle(ov1,self.coordinates,ray1,ray2):
                     self.ray_intersections[i].append(ov1)
                 if Utils.is_inside_triangle(ov2,self.coordinates,ray1,ray2):
@@ -360,12 +360,12 @@ class Pedestrian(pygame.sprite.Sprite):
             self.__update_position(0, -5)
     
     def update(self):
-        (angle_1, velocity_1) = self.__local_obstacle_avoiding_behavior({'l': 3.41})  # TODO: replace hardcoded distance with the nearest object distance from object detection algorithm
+        (angle_1, velocity_1) = self.__local_obstacle_avoiding_behavior({'l': 2.41})  # TODO: replace hardcoded distance with the nearest object distance from object detection algorithm
         (angle_2, velocity_2) = self.__regional_path_searching_behavior(self.__calculate_negative_energies({'l': [[15, 3.41]], 'fl': [[1, 2.3], [1, 3.3]], 'f': [[5, 3.1]], 'fr': [[4, 5.0]], 'r': [[2, 4.8]]}, {'l': [[3.41, 1, 1]], 'fl': [[2.3, 1, 1]], 'f': [[3.1, 1, 1]], 'fr': [[5.0, 1, 1]], 'r': [[4.8, 1, 1]]})) # TODO: replace hardcoded data for obstacles and pedestrians in field of vision from object and pedestrian detection algorithms
         (angle_3, velocity_3) = self.__global_goal_seeking_behavior(angle_between(self, self.goal), distance_between(self.coordinates, self.goal.coordinates))
         movement_speed, turning_angle = self.__integrate_multiple_behaviors([angle_1, angle_2, angle_3], [velocity_1, velocity_2, velocity_3])
-        print(f'Turning angle: {turning_angle}, movement speed: {movement_speed}')  # TODO: connect output values with visualization
-        
+        #print(f'Turning angle: {turning_angle}, movement speed: {movement_speed}')  # TODO: connect output values with visualization
+
         move = movement_speed / self.simulation.tick_rate
         self.__update_position(move,turning_angle)
 
