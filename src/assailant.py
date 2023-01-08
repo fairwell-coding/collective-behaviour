@@ -1,4 +1,4 @@
-from typing import TYPE_CHECKING, Tuple, Dict, List, Optional, Union, Any
+from typing import TYPE_CHECKING, Tuple, Dict, List, Optional, Any
 
 import pygame
 from fuzzylogic.classes import Rule
@@ -6,7 +6,6 @@ from algebra_functions import distance_between, angle_between, intersects, unit_
 from environment import Environment
 import numpy as np
 
-from src.pedestrian import Pedestrian
 from src.utils import Utils
 
 if TYPE_CHECKING:
@@ -33,6 +32,7 @@ class Assailant(pygame.sprite.Sprite):
         self.__update_position((0, 0), 0)
         self.priority_target = self.target_selection_distance(key=min)
 
+    # SECTION FOR TARGET SELECTION
     def __filter_targets__(self):  # only return targets that aren't behind walls
         filtered_targets = []
         for pedestrian in self.targets:
@@ -88,6 +88,7 @@ class Assailant(pygame.sprite.Sprite):
 
         return target_data#, distance_between(self.coordinates, target_data.coordinates), angle_between(self, target_data)
 
+    # ESSENTIAL FUCTIONS
     def __update_position(self, move, angle):
         self.coordinates += move
         self.angle += angle
@@ -100,6 +101,21 @@ class Assailant(pygame.sprite.Sprite):
         self.ray_intersections = [[]] * 6
         for obstacle in self.simulation.obstacles:
             self.__collision_detection(obstacle)
+
+    def update(self):
+        new_target = self.target_selection_distance(key=min)
+        if new_target is not None:
+            self.priority_target = new_target
+        (angle_1, velocity_1) = self.__local_obstacle_avoiding_behavior({'r': 2.11})  # TODO: like in pedestrians
+        (angle_2, velocity_2) = self.__regional_path_searching_behavior(self.__calculate_negative_energies(
+            {'l': [[15, 3.41]], 'fl': [[1, 2.3], [1, 3.3]], 'f': [[5, 3.1]], 'fr': [[4, 5.0]], 'r': [[2, 4.8]]},
+            {'l': [[3.41, 1, 1]], 'fl': [[2.3, 1, 1]], 'f': [[3.1, 1, 1]], 'fr': [[5.0, 1, 1]], 'r': [[4.8, 1,
+                                                                                                       1]]}))  # TODO: replace hardcoded data for obstacles and pedestrians in field of vision from object and pedestrian detection algorithms
+        (angle_3, velocity_3) = self.__pedestrian_hunting_behavior(angle_between(self, self.priority_target), distance_between(self.coordinates, self.priority_target.coordinates))
+        movement_speed, turning_angle = self.__integrate_multiple_behaviors([angle_1, angle_2, angle_3], [velocity_1, velocity_2, velocity_3])
+
+        move = movement_speed / self.simulation.tick_rate
+        self.__update_position(move, turning_angle)
 
     def draw(self):
         coords_scaled = self.coordinates * self.simulation.scale
@@ -119,22 +135,7 @@ class Assailant(pygame.sprite.Sprite):
             for ray_intersection in fov_segment_intersections_scaled:
                 pygame.draw.circle(self.simulation.screen, Environment.color_green, ray_intersection, 3)
 
-    def update(self):
-        new_target = self.target_selection_distance(key=min)
-        if new_target is not None:
-            self.priority_target = new_target
-        (angle_1, velocity_1) = self.__local_obstacle_avoiding_behavior({'r': 2.11})  # TODO: like in pedestrians
-        (angle_2, velocity_2) = self.__regional_path_searching_behavior(self.__calculate_negative_energies(
-            {'l': [[15, 3.41]], 'fl': [[1, 2.3], [1, 3.3]], 'f': [[5, 3.1]], 'fr': [[4, 5.0]], 'r': [[2, 4.8]]},
-            {'l': [[3.41, 1, 1]], 'fl': [[2.3, 1, 1]], 'f': [[3.1, 1, 1]], 'fr': [[5.0, 1, 1]], 'r': [[4.8, 1,
-                                                                                                       1]]}))  # TODO: replace hardcoded data for obstacles and pedestrians in field of vision from object and pedestrian detection algorithms
-        (angle_3, velocity_3) = self.__pedestrian_hunting_behavior(angle_between(self, self.priority_target), distance_between(self.coordinates, self.priority_target.coordinates))
-        movement_speed, turning_angle = self.__integrate_multiple_behaviors([angle_1, angle_2, angle_3], [velocity_1, velocity_2, velocity_3])
-
-        move = movement_speed / self.simulation.tick_rate
-        self.__update_position(move,turning_angle)
-        #print(angle_3, velocity_3)
-
+    # REGIONAL PATH SEARCHING
     def __regional_path_searching_behavior(self, negative_energy_per_sector: Dict[str, float]) -> Tuple[
         float, float]:
         """ Implements the second behavior of category I pedestrians, i.e. "The Regional Path-Searching Behavior", of the paper.
@@ -164,37 +165,6 @@ class Assailant(pygame.sprite.Sprite):
 
         return rules_direction(values), rules_velocity(values)
 
-    @staticmethod
-    def __create_goal_seeking_behavior_rules(is_direction: bool, direction, goal_angle, goal_distance, velocity):
-        """ table II - the goal seeking behavior
-        :param direction: orientation of pedestrian
-        :param goal_angle: angle towards goal
-        :param goal_distance: distance to goal
-        :param velocity: current pedestrian movement speed
-        :return: constructed rules
-        """
-
-        return Rule({(goal_angle.large_pos, goal_distance.near): direction.large_neg if is_direction else velocity.stop,
-                     # rule no. 1
-                     (goal_angle.large_pos, goal_distance.far): direction.large_neg if is_direction else velocity.slow,
-                     # rule no. 2
-                     (goal_angle.small_pos, goal_distance.near): direction.small_neg if is_direction else velocity.slow,
-                     # rule no. 3
-                     (goal_angle.small_pos, goal_distance.far): direction.small_neg if is_direction else velocity.slow,
-                     # rule no. 4
-                     (goal_angle.zero, goal_distance.near): direction.zero if is_direction else velocity.fast,
-                     # rule no. 5
-                     (goal_angle.zero, goal_distance.far): direction.zero if is_direction else velocity.fast,
-                     # rule no. 6
-                     (goal_angle.small_neg, goal_distance.near): direction.small_pos if is_direction else velocity.slow,
-                     # rule no. 7
-                     (goal_angle.small_neg, goal_distance.far): direction.small_pos if is_direction else velocity.slow,
-                     # rule no. 8
-                     (goal_angle.large_neg, goal_distance.near): direction.large_pos if is_direction else velocity.stop,
-                     # rule no. 9
-                     (goal_angle.large_neg, goal_distance.far): direction.large_pos if is_direction else velocity.slow,
-                     # rule no. 10
-                     })
 
     @staticmethod
     def __create_local_obstacle_avoiding_behavior_rules(is_direction: bool, direction, velocity, distances):
@@ -554,6 +524,40 @@ class Assailant(pygame.sprite.Sprite):
                      (occupied_angle.large, distance.far): oi.middle,
                      (occupied_angle.small, distance.near): oi.middle,
                      (occupied_angle.small, distance.far): oi.small,
+                     })
+
+
+    # GLOBAL SEEKING BEHAVIOUR
+    @staticmethod
+    def __create_goal_seeking_behavior_rules(is_direction: bool, direction, goal_angle, goal_distance, velocity):
+        """ table II - the goal seeking behavior
+        :param direction: orientation of pedestrian
+        :param goal_angle: angle towards goal
+        :param goal_distance: distance to goal
+        :param velocity: current pedestrian movement speed
+        :return: constructed rules
+        """
+
+        return Rule({(goal_angle.large_pos, goal_distance.near): direction.large_neg if is_direction else velocity.stop,
+                     # rule no. 1
+                     (goal_angle.large_pos, goal_distance.far): direction.large_neg if is_direction else velocity.slow,
+                     # rule no. 2
+                     (goal_angle.small_pos, goal_distance.near): direction.small_neg if is_direction else velocity.slow,
+                     # rule no. 3
+                     (goal_angle.small_pos, goal_distance.far): direction.small_neg if is_direction else velocity.slow,
+                     # rule no. 4
+                     (goal_angle.zero, goal_distance.near): direction.zero if is_direction else velocity.fast,
+                     # rule no. 5
+                     (goal_angle.zero, goal_distance.far): direction.zero if is_direction else velocity.fast,
+                     # rule no. 6
+                     (goal_angle.small_neg, goal_distance.near): direction.small_pos if is_direction else velocity.slow,
+                     # rule no. 7
+                     (goal_angle.small_neg, goal_distance.far): direction.small_pos if is_direction else velocity.slow,
+                     # rule no. 8
+                     (goal_angle.large_neg, goal_distance.near): direction.large_pos if is_direction else velocity.stop,
+                     # rule no. 9
+                     (goal_angle.large_neg, goal_distance.far): direction.large_pos if is_direction else velocity.slow,
+                     # rule no. 10
                      })
 
     def __pedestrian_hunting_behavior(self, angle: float, distance: float) -> Tuple[float, float]:
