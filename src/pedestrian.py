@@ -337,17 +337,6 @@ class Pedestrian(pygame.sprite.Sprite):
                 if Utils.is_inside_triangle(ov2,self.coordinates,ray1,ray2):
                     self.ray_intersections[i].append(ov2)
         
-        self.zone_obstacle_dist = {}
-        for zone_name, ray1, ray2 in zip(Environment.zone_names, self.ray_intersections[:-1], self.ray_intersections[1:]):
-            if len(ray1) == 0 and len(ray2) == 0:
-                continue
-            elif len(ray1) == 0:
-                combined_rays = ray2
-            elif len(ray2) == 0:
-                combined_rays = ray1
-            else:
-                combined_rays = np.vstack([ray1,ray2])
-            self.zone_obstacle_dist[zone_name] = np.min(np.linalg.norm(combined_rays - self.coordinates,axis=1))
 
     def __update_position(self, move, angle):
         self.coordinates += move
@@ -362,6 +351,13 @@ class Pedestrian(pygame.sprite.Sprite):
         self.ray_intersections = [[] for _ in range(6)]
         for obstacle in self.simulation.obstacles:
             self.__collision_detection(obstacle)
+            
+        self.zone_obstacle_dist = {}
+        for zone_name, ray in zip(Environment.zone_names, self.ray_intersections):
+            if len(ray) != 0:
+                self.zone_obstacle_dist[zone_name] = np.min(np.linalg.norm(ray - self.coordinates,axis=1))
+            else:
+                self.zone_obstacle_dist[zone_name] = Environment.dmax + 1
 
     def update_from_keyboard(self, pressed_keys):
         move = 50 / self.simulation.tick_rate * np.array([np.cos(self.angle_rad), np.sin(self.angle_rad)])
@@ -377,6 +373,8 @@ class Pedestrian(pygame.sprite.Sprite):
     
     def __get_update_params(self):
         (angle_1, velocity_1) = self.__local_obstacle_avoiding_behavior(self.zone_obstacle_dist)  # TODO: replace hardcoded distance with the nearest object distance from object detection algorithm
+        if abs(angle_1) < 1:
+            angle_1 = 0
         
         #(angle_2, velocity_2) = self.__regional_path_searching_behavior(self.__calculate_negative_energies({'l': [[15, 3.41]], 'fl': [[1, 2.3], [1, 3.3]], 'f': [[5, 3.1]], 'fr': [[4, 5.0]], 'r': [[2, 4.8]]}, {'l': [[3.41, 1, 1]], 'fl': [[2.3, 1, 1]], 'f': [[3.1, 1, 1]], 'fr': [[5.0, 1, 1]], 'r': [[4.8, 1, 1]]})) # TODO: replace hardcoded data for obstacles and pedestrians in field of vision from object and pedestrian detection algorithms
         
@@ -387,9 +385,10 @@ class Pedestrian(pygame.sprite.Sprite):
         #print(f'Turning angle: {turning_angle}, movement speed: {movement_speed}')  # TODO: connect output values with visualization
         
         movement_speed, turning_angle = self.__integrate_multiple_behaviors([angle_1, angle_3], [velocity_1, velocity_3])
-        if self.coordinates[1] > self.simulation.goal.coordinates[1]:
-            movement_speed = -movement_speed
+        # if self.coordinates[1] > self.simulation.goal.coordinates[1]:
+        #     movement_speed = -movement_speed
         
+        #movement_speed*=0.05
         return movement_speed, turning_angle
     
     def __is_in_goal(self):
@@ -399,7 +398,9 @@ class Pedestrian(pygame.sprite.Sprite):
         self.__update_collisions()
         movement_speed, turning_angle = self.__get_update_params()
 
-        move = movement_speed / self.simulation.tick_rate
+        self.draw()
+        
+        move = movement_speed / self.simulation.tick_rate * np.array([np.cos(self.angle_rad), np.sin(self.angle_rad)])
         self.__update_position(move,turning_angle)
         
         if self.__is_in_goal():

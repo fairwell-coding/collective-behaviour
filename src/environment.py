@@ -24,4 +24,4 @@ class Environment:
     color_black = pygame.Color('#000000')
     color_green = pygame.Color('#00FF00')
     color_red = pygame.Color('#FF0000')
-    font = pygame.font.SysFont(None, 16)
+    font = pygame.font.SysFont(None, 32)

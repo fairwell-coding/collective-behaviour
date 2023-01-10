@@ -269,4 +269,6 @@ class FuzzyDomains:
         return self.collision_risk
     
 if __name__ == "__main__":
-    FuzzyDomains(True)
+    t = trapezoid(-1 / 6 * Environment.fov, -1 / 12 * Environment.fov, 1 / 12 * Environment.fov, 1 / 6 * Environment.fov, c_m=1.0)
+    print(t)
+    # FuzzyDomains(True)

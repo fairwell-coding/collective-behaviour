@@ -14,10 +14,12 @@ class Simulation:
         self.pedestrians: List[Pedestrian] = []
         self.assailants: List[Assailant] = []
         self.obstacles: List[Obstacle] = []
+        
+        self.manual_pedestrian = None
 
         self.tick_rate = tick_rate
         self.scale = scale
-        self.screen = pygame.display.set_mode([840, 540])
+        self.screen = pygame.display.set_mode([840*2, 540*2])
 
     def get_domains(self):
         return self.fuzzy_domains
@@ -54,6 +56,7 @@ class Simulation:
         clock = pygame.time.Clock()
 
         while running:
+            self.screen.fill((255, 255, 255))
 
             for event in pygame.event.get():
                 if event.type == pygame.KEYDOWN and event.key == pygame.K_ESCAPE \
@@ -66,7 +69,6 @@ class Simulation:
             for assailant in self.assailants:
                 assailant.update()
 
-            self.screen.fill((255, 255, 255))
 
             if self.manual_pedestrian:
                 self.manual_pedestrian.update_from_keyboard(pygame.key.get_pressed())
@@ -74,8 +76,8 @@ class Simulation:
             for obstacle in self.obstacles:
                 obstacle.draw()
 
-            for pedestrian in self.pedestrians:
-                pedestrian.draw()
+            # for pedestrian in self.pedestrians:
+            #     pedestrian.draw()
 
             for assailant in self.assailants:
                 assailant.draw()
