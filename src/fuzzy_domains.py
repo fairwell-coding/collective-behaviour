@@ -42,15 +42,17 @@ class FuzzyDomains:
 
         distance = Domain("distance", 0, Environment.dmax, res=.1)
 
-        distance.near_rect = rectangular(0, 5 / 19 * Environment.dmax, c_m=1.0)
-        distance.near_lin = S(5 / 19 * Environment.dmax, 8 / 19 * Environment.dmax)
+        low = 11 / 19
+        high = 14 / 19
+        distance.near_rect = rectangular(0, low * Environment.dmax, c_m=1.0)
+        distance.near_lin = S(low * Environment.dmax, high * Environment.dmax)
         distance.near = distance.near_rect + distance.near_lin
         if self.plot_membership_functions:
             distance.near.plot()
             plt.show()
 
-        distance.far_lin = R(5 / 19 * Environment.dmax, 8 / 19 * Environment.dmax)
-        distance.far_rect = rectangular(8 / 19 * Environment.dmax, Environment.dmax, c_m=1.0)
+        distance.far_lin = R(low * Environment.dmax, high * Environment.dmax)
+        distance.far_rect = rectangular(high * Environment.dmax, Environment.dmax, c_m=1.0)
         distance.far = distance.far_lin + distance.far_rect
         if self.plot_membership_functions:
             distance.far.plot()
@@ -265,3 +267,6 @@ class FuzzyDomains:
 
     def get_collision_risk_domain(self):
         return self.collision_risk
+    
+if __name__ == "__main__":
+    FuzzyDomains(True)

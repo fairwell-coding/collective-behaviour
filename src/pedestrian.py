@@ -11,7 +11,7 @@ if TYPE_CHECKING:
     from simulation import Simulation
 
 class Pedestrian(pygame.sprite.Sprite):    
-    def __init__(self, simulation: 'Simulation', position: Tuple[float, float], angle: float, velocity=0.0) -> None:
+    def __init__(self, simulation: 'Simulation', position: Tuple[float, float], angle: float, velocity=0.0, manual = False) -> None:
         super().__init__()
         if angle < 0.0 or angle > 359.0:
             raise IOError("Valid direction angles for a pedestrian are within 0 and 359 degrees.")  # 360 would be equal to 0 and thus result in issues with the fuzzy logic rule application, i.e.
@@ -20,6 +20,7 @@ class Pedestrian(pygame.sprite.Sprite):
         self.simulation = simulation
         self.domains = self.simulation.get_domains()
         self.goal = self.simulation.get_goal()
+        self.manual = manual
 
         self.coordinates = np.array(position, dtype=float)  # current position P_n
         self.angle = angle  # direction X_in
@@ -335,39 +336,74 @@ class Pedestrian(pygame.sprite.Sprite):
                     self.ray_intersections[i].append(ov1)
                 if Utils.is_inside_triangle(ov2,self.coordinates,ray1,ray2):
                     self.ray_intersections[i].append(ov2)
+        
+        self.zone_obstacle_dist = {}
+        for zone_name, ray1, ray2 in zip(Environment.zone_names, self.ray_intersections[:-1], self.ray_intersections[1:]):
+            if len(ray1) == 0 and len(ray2) == 0:
+                continue
+            elif len(ray1) == 0:
+                combined_rays = ray2
+            elif len(ray2) == 0:
+                combined_rays = ray1
+            else:
+                combined_rays = np.vstack([ray1,ray2])
+            self.zone_obstacle_dist[zone_name] = np.min(np.linalg.norm(combined_rays - self.coordinates,axis=1))
 
     def __update_position(self, move, angle):
         self.coordinates += move
         self.angle += angle
+        self.angle %= 360
         self.angle_rad = np.radians(self.angle)
         
-        self.ray_coords = np.array([(np.sin(angle + self.angle_rad), np.cos(angle + self.angle_rad)) for angle in Environment.fov_ray_angles_rad])
+        self.ray_coords = np.array([(np.cos(angle + self.angle_rad), np.sin(angle + self.angle_rad)) for angle in Environment.fov_ray_angles_rad])
         self.ray_coords = self.coordinates + Environment.dmax * self.ray_coords
-        
-        self.ray_intersections = [[]] * 6
+    
+    def __update_collisions(self):
+        self.ray_intersections = [[] for _ in range(6)]
         for obstacle in self.simulation.obstacles:
             self.__collision_detection(obstacle)
 
     def update_from_keyboard(self, pressed_keys):
-        move = 50 / self.simulation.tick_rate * np.array([np.sin(self.angle_rad), np.cos(self.angle_rad)])
+        move = 50 / self.simulation.tick_rate * np.array([np.cos(self.angle_rad), np.sin(self.angle_rad)])
+        self.__update_collisions()
         if pressed_keys[pygame.K_UP] or pressed_keys[pygame.K_w]:
             self.__update_position(move, 0)
         if pressed_keys[pygame.K_DOWN] or pressed_keys[pygame.K_s]:
             self.__update_position(-move, 0)
         if pressed_keys[pygame.K_LEFT] or pressed_keys[pygame.K_a]:
-            self.__update_position(0, 5)
-        if pressed_keys[pygame.K_RIGHT] or pressed_keys[pygame.K_d]:
             self.__update_position(0, -5)
+        if pressed_keys[pygame.K_RIGHT] or pressed_keys[pygame.K_d]:
+            self.__update_position(0, 5)
+    
+    def __get_update_params(self):
+        (angle_1, velocity_1) = self.__local_obstacle_avoiding_behavior(self.zone_obstacle_dist)  # TODO: replace hardcoded distance with the nearest object distance from object detection algorithm
+        
+        #(angle_2, velocity_2) = self.__regional_path_searching_behavior(self.__calculate_negative_energies({'l': [[15, 3.41]], 'fl': [[1, 2.3], [1, 3.3]], 'f': [[5, 3.1]], 'fr': [[4, 5.0]], 'r': [[2, 4.8]]}, {'l': [[3.41, 1, 1]], 'fl': [[2.3, 1, 1]], 'f': [[3.1, 1, 1]], 'fr': [[5.0, 1, 1]], 'r': [[4.8, 1, 1]]})) # TODO: replace hardcoded data for obstacles and pedestrians in field of vision from object and pedestrian detection algorithms
+        
+        goal_angle, goal_dist = angle_between(self, self.goal), distance_between(self.coordinates, self.goal.coordinates)
+        (angle_3, velocity_3) = self.__global_goal_seeking_behavior(goal_angle, goal_dist)
+        
+        #movement_speed, turning_angle = self.__integrate_multiple_behaviors([angle_1, angle_2, angle_3], [velocity_1, velocity_2, velocity_3])
+        #print(f'Turning angle: {turning_angle}, movement speed: {movement_speed}')  # TODO: connect output values with visualization
+        
+        movement_speed, turning_angle = self.__integrate_multiple_behaviors([angle_1, angle_3], [velocity_1, velocity_3])
+        if self.coordinates[1] > self.simulation.goal.coordinates[1]:
+            movement_speed = -movement_speed
+        
+        return movement_speed, turning_angle
+    
+    def __is_in_goal(self):
+        return np.linalg.norm(self.coordinates - self.goal.coordinates) < Environment.goal_tolerance
     
     def update(self):
-        (angle_1, velocity_1) = self.__local_obstacle_avoiding_behavior({'l': 2.41})  # TODO: replace hardcoded distance with the nearest object distance from object detection algorithm
-        (angle_2, velocity_2) = self.__regional_path_searching_behavior(self.__calculate_negative_energies({'l': [[15, 3.41]], 'fl': [[1, 2.3], [1, 3.3]], 'f': [[5, 3.1]], 'fr': [[4, 5.0]], 'r': [[2, 4.8]]}, {'l': [[3.41, 1, 1]], 'fl': [[2.3, 1, 1]], 'f': [[3.1, 1, 1]], 'fr': [[5.0, 1, 1]], 'r': [[4.8, 1, 1]]})) # TODO: replace hardcoded data for obstacles and pedestrians in field of vision from object and pedestrian detection algorithms
-        (angle_3, velocity_3) = self.__global_goal_seeking_behavior(angle_between(self, self.goal), distance_between(self.coordinates, self.goal.coordinates))
-        movement_speed, turning_angle = self.__integrate_multiple_behaviors([angle_1, angle_2, angle_3], [velocity_1, velocity_2, velocity_3])
-        #print(f'Turning angle: {turning_angle}, movement speed: {movement_speed}')  # TODO: connect output values with visualization
+        self.__update_collisions()
+        movement_speed, turning_angle = self.__get_update_params()
 
         move = movement_speed / self.simulation.tick_rate
         self.__update_position(move,turning_angle)
+        
+        if self.__is_in_goal():
+            self.simulation.remove_pedestrian(self)
 
     def draw(self):
         coords_scaled = self.coordinates * self.simulation.scale
@@ -384,6 +420,22 @@ class Pedestrian(pygame.sprite.Sprite):
             fov_segment_intersections_scaled = np.array(fov_segment_intersections) * self.simulation.scale
             for ray_intersection in fov_segment_intersections_scaled:
                 pygame.draw.circle(self.simulation.screen, Environment.color_red, ray_intersection, 3)
+                
+        if self.manual:
+            movement_speed, turning_angle = self.__get_update_params()
+            goal_angle, goal_dist = angle_between(self, self.goal), distance_between(self.coordinates, self.goal.coordinates)
+            
+            y_offset = 0
+            x_offset = 0
+            texts = []
+            texts.append((Environment.font.render(f'Angle: {self.angle}',True, Environment.color_black),(x_offset,y_offset)))
+            y_offset+=16
+            texts.append((Environment.font.render(f'Goal: {goal_angle:.0f} {goal_dist:.0f}',True, Environment.color_black),(x_offset,y_offset)))
+            y_offset+=16
+            texts.append((Environment.font.render(f'Obstacle dist: {",".join([f"{d:.2f}" for d in self.zone_obstacle_dist.values()])}',True, Environment.color_black),(x_offset,y_offset)))
+            y_offset+=16
+            texts.append((Environment.font.render(f'Move: {turning_angle:.0f} {movement_speed:.2f}',True, Environment.color_black),(x_offset,y_offset)))
+            self.simulation.screen.blits(texts)
 
     @staticmethod
     def __integrate_multiple_behaviors(angles: List[float], velocities: List[float]):

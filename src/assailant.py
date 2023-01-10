@@ -6,7 +6,7 @@ from algebra_functions import distance_between, angle_between, intersects, unit_
 from environment import Environment
 import numpy as np
 
-from src.utils import Utils
+from utils import Utils
 
 if TYPE_CHECKING:
     from simulation import Simulation
@@ -54,7 +54,7 @@ class Assailant(pygame.sprite.Sprite):
 
     def target_selection_distance(self,
                                   key=min) -> Optional[
-        Tuple[Any, float, Any]]:  # returns the angle to the target, selected based on distance.
+            Tuple[Any, float, Any]]:  # returns the angle to the target, selected based on distance.
         """ Selects a target using distance from assailant
         :param key: a function that accepts *n* float values and returns one of them
         :return: tuple of current direction/angle and velocity/movement speed based on the corresponding rules
@@ -66,7 +66,7 @@ class Assailant(pygame.sprite.Sprite):
             (distance_between(pedestrian.get_coordinates(), self.coordinates), pedestrian) for pedestrian in
             self.__filter_targets__())[1]
 
-        return target_data#tuple(target_data.coordinates), distance_between(self.coordinates, target_data.coordinates), angle_between(self,target_data)
+        return target_data  # tuple(target_data.coordinates), distance_between(self.coordinates, target_data.coordinates), angle_between(self,target_data)
 
     def target_selection_peripherality(self,
                                        key=max):  # -> float:  # returns the angle to the target, selected based on distance.
@@ -86,7 +86,7 @@ class Assailant(pygame.sprite.Sprite):
 
         target_data = key(scores, key=lambda x: x[0])[1]
 
-        return target_data#, distance_between(self.coordinates, target_data.coordinates), angle_between(self, target_data)
+        return target_data  # , distance_between(self.coordinates, target_data.coordinates), angle_between(self, target_data)
 
     # ESSENTIAL FUCTIONS
     def __update_position(self, move, angle):
@@ -137,7 +137,7 @@ class Assailant(pygame.sprite.Sprite):
 
     # REGIONAL PATH SEARCHING
     def __regional_path_searching_behavior(self, negative_energy_per_sector: Dict[str, float]) -> Tuple[
-        float, float]:
+            float, float]:
         """ Implements the second behavior of category I pedestrians, i.e. "The Regional Path-Searching Behavior", of the paper.
         :param negative_energy_per_sector: dict of normalized negative energies from each sector within field of vision, valid keys are 'l', 'fl', 'f', 'fr' and 'r' as described in the paper
         :return: tuple of current direction/angle and velocity/movement speed based on the corresponding rules
@@ -154,17 +154,16 @@ class Assailant(pygame.sprite.Sprite):
 
         values = {negative_energies['l']: negative_energy_per_sector[
             'l'] if 'l' in negative_energy_per_sector else Environment.neg_energy_max,
-                  negative_energies['fl']: negative_energy_per_sector[
-                      'fl'] if 'fl' in negative_energy_per_sector else Environment.neg_energy_max,
-                  negative_energies['f']: negative_energy_per_sector[
-                      'f'] if 'f' in negative_energy_per_sector else Environment.neg_energy_max,
-                  negative_energies['fr']: negative_energy_per_sector[
-                      'fr'] if 'fr' in negative_energy_per_sector else Environment.neg_energy_max,
-                  negative_energies['r']: negative_energy_per_sector[
-                      'r'] if 'r' in negative_energy_per_sector else Environment.neg_energy_max}
+            negative_energies['fl']: negative_energy_per_sector[
+            'fl'] if 'fl' in negative_energy_per_sector else Environment.neg_energy_max,
+            negative_energies['f']: negative_energy_per_sector[
+            'f'] if 'f' in negative_energy_per_sector else Environment.neg_energy_max,
+            negative_energies['fr']: negative_energy_per_sector[
+            'fr'] if 'fr' in negative_energy_per_sector else Environment.neg_energy_max,
+            negative_energies['r']: negative_energy_per_sector[
+            'r'] if 'r' in negative_energy_per_sector else Environment.neg_energy_max}
 
         return rules_direction(values), rules_velocity(values)
-
 
     @staticmethod
     def __create_local_obstacle_avoiding_behavior_rules(is_direction: bool, direction, velocity, distances):
@@ -400,7 +399,7 @@ class Assailant(pygame.sprite.Sprite):
             obstacleImpactPerSector = self.__calculate_obstacle_impact(obstacles[s])
             collisionRiskPerSector = self.__calculate_collision_risk(pedestrians[s])
             negativeEnergyPerSector[s] = Environment.k_w * obstacleImpactPerSector + (
-                    1 - Environment.k_w) * collisionRiskPerSector
+                1 - Environment.k_w) * collisionRiskPerSector
 
         # Normalize negative energies
         minimum = min(negativeEnergyPerSector.values())
@@ -526,8 +525,8 @@ class Assailant(pygame.sprite.Sprite):
                      (occupied_angle.small, distance.far): oi.small,
                      })
 
-
     # GLOBAL SEEKING BEHAVIOUR
+
     @staticmethod
     def __create_goal_seeking_behavior_rules(is_direction: bool, direction, goal_angle, goal_distance, velocity):
         """ table II - the goal seeking behavior
