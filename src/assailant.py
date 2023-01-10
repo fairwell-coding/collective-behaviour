@@ -1,8 +1,9 @@
 from typing import TYPE_CHECKING, Tuple, Dict, List, Optional, Any
 
 import pygame
+from operator import itemgetter
 from fuzzylogic.classes import Rule
-from algebra_functions import distance_between, angle_between, intersects, unit_vector_between
+from algebra_functions import distance_between, angle_between, intersects, unit_vector_between, centroid
 from environment import Environment
 import numpy as np
 
@@ -13,7 +14,7 @@ if TYPE_CHECKING:
 
 
 class Assailant(pygame.sprite.Sprite):
-    def __init__(self, simulation: 'Simulation', position: Tuple[float, float], angle: float, velocity: 0.0):
+    def __init__(self, simulation: 'Simulation', position: Tuple[float, float], angle: float, velocity: 0.0, **kwargs):
         super().__init__()
         if angle < 0.0 or angle > 359.0:
             raise IOError(
@@ -29,8 +30,17 @@ class Assailant(pygame.sprite.Sprite):
         self.angle = angle  # direction X_in
         self.velocity = velocity  # movement speed V_n
 
+        predator_type = kwargs.get('predator_type')
+        if predator_type == "Advanced":
+            self.target_key = max
+            self.target_selection_function = self.target_selection_peripherality
+        else:
+            self.target_key = min
+            self.target_selection_function = self.target_selection_distance
+
+
         self.__update_position((0, 0), 0)
-        self.priority_target = self.target_selection_distance(key=min)
+        self.priority_target = self.target_selection_function(key=min)
 
     # SECTION FOR TARGET SELECTION
     def __filter_targets__(self):  # only return targets that aren't behind walls
@@ -62,9 +72,9 @@ class Assailant(pygame.sprite.Sprite):
         if len(self.__filter_targets__()) == 0:
             return None
 
-        target_data = key(
-            (distance_between(pedestrian.get_coordinates(), self.coordinates), pedestrian) for pedestrian in
-            self.__filter_targets__())[1]
+        targets = self.__filter_targets__()
+
+        target_data = key([(distance_between(pedestrian.coordinates, self.coordinates), pedestrian) for pedestrian in targets], key=itemgetter(0))[1]
 
         return target_data  # tuple(target_data.coordinates), distance_between(self.coordinates, target_data.coordinates), angle_between(self,target_data)
 
@@ -74,22 +84,32 @@ class Assailant(pygame.sprite.Sprite):
         :param key: a function that accepts *n* float values and returns one of them
         :return: tuple of current direction/angle and velocity/movement speed based on the corresponding rules
         """
+        if len(self.__filter_targets__()) == 0:
+            return None
+
         targets = self.__filter_targets__()
-        scores = []
-        for pedestrian in targets:
-            vector_sum = [sum(element) for element in
-                          zip(*[unit_vector_between(tuple(pedestrian.get_coordinates()), tuple(self.coordinates)) for p in targets if
-                                tuple(p.get_coordinates()) != tuple(pedestrian.get_coordinates())])]
-            vector_sum = [e / max((len(targets) - 1), 1) for e in vector_sum]
-            peripherality = np.sqrt(vector_sum[0] ** 2 + vector_sum[1] ** 2)
-            scores.append((peripherality, pedestrian))
 
-        target_data = key(scores, key=lambda x: x[0])[1]
+        centrality = centroid(targets)
+        target_data = key([(distance_between(pedestrian.coordinates, centrality), pedestrian) for pedestrian in targets], key=itemgetter(0))[1]
 
-        return target_data  # , distance_between(self.coordinates, target_data.coordinates), angle_between(self, target_data)
+        return target_data
+
+
+        #scores = []
+        #for pedestrian in targets:
+        #    vector_sum = [sum(element) for element in
+        #                  zip(*[unit_vector_between(tuple(pedestrian.get_coordinates()), tuple(self.coordinates)) for p in targets if
+        #                        tuple(p.get_coordinates()) != tuple(pedestrian.get_coordinates())])]
+        #    vector_sum = [e / max((len(targets) - 1), 1) for e in vector_sum]
+        #    peripherality = np.sqrt(vector_sum[0] ** 2 + vector_sum[1] ** 2)
+        #    scores.append((peripherality, pedestrian))
+
+        #target_data = key(scores, key=lambda x: x[0])[1]
+
+        #return target_data  # , distance_between(self.coordinates, target_data.coordinates), angle_between(self, target_data)
 
     # ESSENTIAL FUCTIONS
-    def __update_position(self, move, angle):
+    def __update_position(self, move, angle): #TODO: Change this
         self.coordinates += move
         self.angle += angle
         self.angle_rad = np.radians(self.angle)
@@ -102,38 +122,59 @@ class Assailant(pygame.sprite.Sprite):
         for obstacle in self.simulation.obstacles:
             self.__collision_detection(obstacle)
 
-    def update(self):
-        new_target = self.target_selection_distance(key=min)
+    def __get_update_params(self):
+        new_target = self.target_selection_function(key=self.target_key)
         if new_target is not None:
             self.priority_target = new_target
-        (angle_1, velocity_1) = self.__local_obstacle_avoiding_behavior({'r': 2.11})  # TODO: like in pedestrians
-        (angle_2, velocity_2) = self.__regional_path_searching_behavior(self.__calculate_negative_energies(
-            {'l': [[15, 3.41]], 'fl': [[1, 2.3], [1, 3.3]], 'f': [[5, 3.1]], 'fr': [[4, 5.0]], 'r': [[2, 4.8]]},
-            {'l': [[3.41, 1, 1]], 'fl': [[2.3, 1, 1]], 'f': [[3.1, 1, 1]], 'fr': [[5.0, 1, 1]], 'r': [[4.8, 1,
-                                                                                                       1]]}))  # TODO: replace hardcoded data for obstacles and pedestrians in field of vision from object and pedestrian detection algorithms
+
+        if self.priority_target is None:
+            return 0, 0
+
+        (angle_1, velocity_1) = self.__local_obstacle_avoiding_behavior(self.zone_obstacle_dist)
         (angle_3, velocity_3) = self.__pedestrian_hunting_behavior(angle_between(self, self.priority_target), distance_between(self.coordinates, self.priority_target.coordinates))
-        movement_speed, turning_angle = self.__integrate_multiple_behaviors([angle_1, angle_2, angle_3], [velocity_1, velocity_2, velocity_3])
 
-        move = movement_speed / self.simulation.tick_rate
+        movement_speed, turning_angle = self.__integrate_multiple_behaviors([angle_1, angle_3], [velocity_1, velocity_3])
+
+        return movement_speed, turning_angle
+
+    def update(self):
+        self.targets = self.simulation.get_pedestrians()
+        self.__update_collisions()
+        movement_speed, turning_angle = self.__get_update_params()
+
+        move = (movement_speed*1.25) / self.simulation.tick_rate * np.array([np.cos(self.angle_rad), np.sin(self.angle_rad)])
         self.__update_position(move, turning_angle)
+        if self.__reached_target():
+            self.priority_target.kill()
 
-    def draw(self):
+    def __reached_target(self):
+        if self.priority_target is not None:
+            return distance_between(self.coordinates, self.priority_target.coordinates) < Environment.reach_max
+        else:
+            return False
+    def draw(self, **kwargs):
+        draw_rays = kwargs.get('draw_rays')
+        if draw_rays is None:
+            draw_rays = True
         coords_scaled = self.coordinates * self.simulation.scale
         ray_coords_scaled = self.ray_coords * self.simulation.scale
-        target_coords_scaled = self.priority_target.coordinates * self.simulation.scale
+        if self.priority_target is not None:
+            target_coords_scaled = self.priority_target.coordinates * self.simulation.scale
+            pygame.draw.line(self.simulation.screen, Environment.color_red, coords_scaled, target_coords_scaled)
 
-        pygame.draw.line(self.simulation.screen, Environment.color_red, coords_scaled, target_coords_scaled)
+        if draw_rays:
+            for ray in ray_coords_scaled:
+                pygame.draw.line(self.simulation.screen, Environment.color_red, coords_scaled, ray, 1)
 
-        for ray in ray_coords_scaled:
-            pygame.draw.line(self.simulation.screen, Environment.color_red, coords_scaled, ray, 1)
+            for ray1, ray2 in zip(ray_coords_scaled[:-1], ray_coords_scaled[1:]):
+                pygame.draw.line(self.simulation.screen, Environment.color_red, ray1, ray2, 1)
 
-        for ray1, ray2 in zip(ray_coords_scaled[:-1], ray_coords_scaled[1:]):
-            pygame.draw.line(self.simulation.screen, Environment.color_red, ray1, ray2, 1)
-
-        for fov_segment_intersections in self.ray_intersections:
-            fov_segment_intersections_scaled = np.array(fov_segment_intersections) * self.simulation.scale
-            for ray_intersection in fov_segment_intersections_scaled:
-                pygame.draw.circle(self.simulation.screen, Environment.color_green, ray_intersection, 3)
+            for fov_segment_intersections in self.ray_intersections:
+                fov_segment_intersections_scaled = np.array(fov_segment_intersections) * self.simulation.scale
+                for ray_intersection in fov_segment_intersections_scaled:
+                    pygame.draw.circle(self.simulation.screen, Environment.color_green, ray_intersection, 3)
+        else:
+            pygame.draw.circle(self.simulation.screen, Environment.color_red, coords_scaled, 12.5)
 
     # REGIONAL PATH SEARCHING
     def __regional_path_searching_behavior(self, negative_energy_per_sector: Dict[str, float]) -> Tuple[
@@ -509,6 +550,18 @@ class Assailant(pygame.sprite.Sprite):
                     self.ray_intersections[i].append(ov1)
                 if Utils.is_inside_triangle(ov2, self.coordinates, ray1, ray2):
                     self.ray_intersections[i].append(ov2)
+
+    def __update_collisions(self):
+        self.ray_intersections = [[] for _ in range(6)]
+        for obstacle in self.simulation.obstacles:
+            self.__collision_detection(obstacle)
+
+        self.zone_obstacle_dist = {}
+        for zone_name, ray in zip(Environment.zone_names, self.ray_intersections):
+            if len(ray) != 0:
+                self.zone_obstacle_dist[zone_name] = np.min(np.linalg.norm(ray - self.coordinates, axis=1))
+            else:
+                self.zone_obstacle_dist[zone_name] = Environment.dmax + 1
 
     @staticmethod
     def __create_obstacle_impact_rules(oi, occupied_angle, distance):

@@ -48,8 +48,8 @@ def __test_assailant_target_selection_2():
     #sim.add_pedestrian((111, 5), 180, 1.0)
     #sim.add_pedestrian((-2, 5), 180, 1.0)
     sim.add_pedestrian((66, 56), 180, 1.0)
-    sim.add_assailant((50, 75), 180, 1.0)
-    sim.add_assailant((70, 35), 180, 1.0)
+    sim.add_assailant((50, 75), 180, 1.0, predator_type="Advanced")
+    sim.add_assailant((70, 35), 180, 1.0, predator_type="Advanced")
     sim.add_obstacle([(120, 120), (100, 100)])
     sim.add_obstacle([(80, 80), (80, 30), (75, -9)])
     sim.run()
@@ -59,9 +59,30 @@ def __test_assailant_target_selection_2():
         #print(assailant.target_selection_peripherality(key=max))
         #print((assailant.coordinates[0], assailant.coordinates[1]))
 
+def __test_simple_room():
+    sim = Simulation(FuzzyDomains(), Goal((-16.34, -16.34)))
+    sim.add_obstacle([(20, 80),(20, 40)])
+    sim.add_obstacle([(20, 100), (140, 100), (140, 20), (20, 20)])
+    sim.add_pedestrian((90, 70), 180, 1.0)
+    sim.add_pedestrian((100, 75), 180, 1.0)
+    sim.add_pedestrian((80, 80), 180, 1.0)
+    sim.add_pedestrian((50, 30), 180, 1.0)
+    sim.add_pedestrian((40, 45), 180, 1.0)
+    sim.add_pedestrian((60, 55), 180, 1.0)
+    sim.add_assailant((30, 30), 180, 1.0, predator_type = "Primitive")
+    sim.add_assailant((100, 32), 180, 1.0, predator_type = "Primitive")
+    #sim.add_pedestrian((66, 56), 180, 1.0)
+    #sim.add_pedestrian((66, 56), 180, 1.0)
+    #sim.add_pedestrian((66, 56), 180, 1.0)
+    sim.run()
+
+    #for assailant in sim.get_assailants():
+        #print(assailant.target_selection_distance(key=min))
+        #print(assailant.target_selection_peripherality(key=max))
 
 if __name__ == '__main__':
     #__test_goal_angle()
     # __test_goal_angle_2()
     #__test_assailant_target_selection()
-    __test_assailant_target_selection_2()
+    #__test_assailant_target_selection_2()
+    __test_simple_room()

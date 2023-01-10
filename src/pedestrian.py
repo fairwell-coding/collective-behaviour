@@ -17,6 +17,7 @@ class Pedestrian(pygame.sprite.Sprite):
             raise IOError("Valid direction angles for a pedestrian are within 0 and 359 degrees.")  # 360 would be equal to 0 and thus result in issues with the fuzzy logic rule application, i.e.
             # turning left and right at the same time
 
+        self.status = True
         self.simulation = simulation
         self.domains = self.simulation.get_domains()
         self.goal = self.simulation.get_goal()
@@ -398,30 +399,39 @@ class Pedestrian(pygame.sprite.Sprite):
         self.__update_collisions()
         movement_speed, turning_angle = self.__get_update_params()
 
-        self.draw()
-        
         move = movement_speed / self.simulation.tick_rate * np.array([np.cos(self.angle_rad), np.sin(self.angle_rad)])
-        self.__update_position(move,turning_angle)
+        self.__update_position(move, turning_angle)
         
-        if self.__is_in_goal():
+        if self.__is_in_goal() or not self.status:
             self.simulation.remove_pedestrian(self)
 
-    def draw(self):
+    def kill(self) -> None:
+        self.status = False
+
+    def draw(self, **kwargs):
+        draw_rays = kwargs.get('draw_rays')
+        if draw_rays is None:
+            draw_rays = True
+
         coords_scaled = self.coordinates * self.simulation.scale
         ray_coords_scaled = self.ray_coords * self.simulation.scale
-        
-        for ray in ray_coords_scaled:
-            pygame.draw.line(self.simulation.screen, Environment.color_black, coords_scaled, ray, 1)
 
-        for ray1, ray2 in zip(ray_coords_scaled[:-1], ray_coords_scaled[1:]):
-            pygame.draw.line(self.simulation.screen, Environment.color_black, ray1, ray2, 1)
-        
-        
-        for fov_segment_intersections in self.ray_intersections:
-            fov_segment_intersections_scaled = np.array(fov_segment_intersections) * self.simulation.scale
-            for ray_intersection in fov_segment_intersections_scaled:
-                pygame.draw.circle(self.simulation.screen, Environment.color_red, ray_intersection, 3)
-                
+
+        if draw_rays:
+            for ray in ray_coords_scaled:
+                pygame.draw.line(self.simulation.screen, Environment.color_black, coords_scaled, ray, 1)
+
+            for ray1, ray2 in zip(ray_coords_scaled[:-1], ray_coords_scaled[1:]):
+                pygame.draw.line(self.simulation.screen, Environment.color_black, ray1, ray2, 1)
+
+
+            for fov_segment_intersections in self.ray_intersections:
+                fov_segment_intersections_scaled = np.array(fov_segment_intersections) * self.simulation.scale
+                for ray_intersection in fov_segment_intersections_scaled:
+                    pygame.draw.circle(self.simulation.screen, Environment.color_red, ray_intersection, 3)
+        else:
+            pygame.draw.circle(self.simulation.screen, Environment.color_green, coords_scaled, 10)
+
         if self.manual:
             movement_speed, turning_angle = self.__get_update_params()
             goal_angle, goal_dist = angle_between(self, self.goal), distance_between(self.coordinates, self.goal.coordinates)

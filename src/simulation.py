@@ -33,8 +33,8 @@ class Simulation:
     def add_manual_pedestrian(self, position: Tuple[float, float], angle: float) -> None:
         self.manual_pedestrian = Pedestrian(self, position, angle, manual=True)
 
-    def add_assailant(self, position: Tuple[float, float], angle: float, velocity: float) -> None:
-        self.assailants.append(Assailant(self, position, angle, velocity))
+    def add_assailant(self, position: Tuple[float, float], angle: float, velocity: float, **kwargs) -> None:
+        self.assailants.append(Assailant(self, position, angle, velocity, predator_type=kwargs.get('predator_type')))
 
     def add_obstacle(self, vertices: List[Tuple[float, float]]) -> None:
         self.obstacles.append(Obstacle(vertices, self))
@@ -51,7 +51,7 @@ class Simulation:
     def remove_pedestrian(self, pedestrian: Pedestrian):
         self.pedestrians.remove(pedestrian)
 
-    def run(self):
+    def run(self, **kwargs):
         running = True
         clock = pygame.time.Clock()
 
@@ -65,27 +65,23 @@ class Simulation:
 
             for pedestrian in self.pedestrians:
                 pedestrian.update()
+                pedestrian.draw(**kwargs)
 
             for assailant in self.assailants:
                 assailant.update()
+                assailant.draw(**kwargs)
 
 
-            if self.manual_pedestrian:
-                self.manual_pedestrian.update_from_keyboard(pygame.key.get_pressed())
+            #if self.manual_pedestrian:
+            #    self.manual_pedestrian.update_from_keyboard(pygame.key.get_pressed())
 
             for obstacle in self.obstacles:
                 obstacle.draw()
 
-            # for pedestrian in self.pedestrians:
-            #     pedestrian.draw()
-
-            for assailant in self.assailants:
-                assailant.draw()
-
             self.goal.draw(self.screen, self.scale)
 
-            if self.manual_pedestrian:
-                self.manual_pedestrian.draw()
+            #if self.manual_pedestrian:
+            #    self.manual_pedestrian.draw()
 
             pygame.display.flip()
             clock.tick(self.tick_rate)
